@@ -18,6 +18,38 @@
 [model notebook](notebooks/02_model_walkthrough.ipynb) · [data dictionary](docs/data_dictionary.md) ·
 [data model](docs/data_model.md) · [architecture](docs/architecture.md)
 
+## Interactive app
+A multipage Streamlit app (`app/streamlit_app.py`) presents the whole project for stakeholders. It reads
+**only** compact, aggregated artifacts committed in `app/data/` (~1.4 MB: summaries, curves, cohort/survival
+tables and the 4,323 scored customers with features, probabilities, CLV, segments and precomputed SHAP values).
+No raw transactions, no pipeline and no ML libraries are needed at deploy time.
+
+| Page | What it shows |
+|---|---|
+| Executive summary | business question, KPI cards, value x risk matrix, key recommendation |
+| Data & cleaning | pipeline graph, cleaning waterfall, data-quality checks |
+| Cohorts & lifecycle | interactive retention heatmap and curves, rolling 30/60/90-day activity, RFM |
+| Churn model | metrics vs baselines, ROC/PR, calibration, lift/gains, backtest, SHAP + customer lookup |
+| Customer lifetime value | BG/NBD + Gamma-Gamma holdout validation, CLV distribution and concentration |
+| Survival analysis | KM curves by segment with CIs, Cox hazard-ratio forest plot, `cox.zph` notes |
+| Retention targeting simulator | sliders for **ASSUMED** uplift/margin/cost with live ROI, sensitivity, target list |
+| Methodology & limitations | validation design, leakage controls, churn-proxy and calibration caveats |
+
+```bash
+make app-data        # refresh app/data/ from pipeline outputs
+make app             # http://localhost:8501
+```
+**Deploy on Streamlit Community Cloud:** main file `app/streamlit_app.py`, Python 3.11 (3.10-3.12 supported);
+dependencies come from `app/requirements.txt` (streamlit, pandas, numpy, pyarrow, plotly). Theme:
+`.streamlit/config.toml`.
+
+| | |
+|---|---|
+| ![Overview](docs/app_screenshots/01_overview.png) | ![Churn model](docs/app_screenshots/04_churn_model.png) |
+| ![Targeting simulator](docs/app_screenshots/07_targeting.png) | ![Survival](docs/app_screenshots/06_survival.png) |
+
+All eight page screenshots: [`docs/app_screenshots/`](docs/app_screenshots/).
+
 ---
 
 ## 1. Situation & question
@@ -129,12 +161,12 @@ post-cutoff row is altered or dropped.
 | RFM heuristic | 0.750 | 0.715 | 0.204 | 0.044 | 1.64x | 44.9% |
 | Logistic regression (raw) | **0.769** | **0.737** | **0.202** | 0.093 | **1.64x** | 44.2% |
 | **Logistic regression + Platt** (final) | 0.769 | 0.737 | 0.209 | 0.123 | 1.64x | 44.2% |
-| LightGBM (raw) | 0.765 | 0.725 | 0.211 | 0.127 | 1.52x | 44.4% |
-| LightGBM + Platt | 0.765 | 0.725 | 0.214 | 0.133 | 1.52x | 44.4% |
+| LightGBM (raw) | 0.765 | 0.727 | 0.211 | 0.128 | 1.54x | 44.4% |
+| LightGBM + Platt | 0.765 | 0.727 | 0.214 | 0.133 | 1.54x | 44.4% |
 
-**Rolling backtest ROC-AUC** (LogReg / LightGBM / RFM / Recency): 2010-12: 0.789 / 0.783 / 0.774 / 0.701 ·
-2011-03: 0.776 / 0.762 / 0.771 / 0.712 · 2011-06: 0.809 / 0.805 / 0.785 / 0.743 · 2011-09: 0.769 / 0.768 /
-0.752 / 0.706. Logistic regression is best at every cutoff; LightGBM adds nothing over a well-specified linear model
+**Rolling backtest ROC-AUC** (LogReg / LightGBM / RFM / Recency): 2010-12: 0.789 / 0.784 / 0.774 / 0.701 ·
+2011-03: 0.776 / 0.762 / 0.771 / 0.712 · 2011-06: 0.809 / 0.805 / 0.785 / 0.743 · 2011-09: 0.769 / 0.769 /
+0.752 / 0.706. Logistic regression is best at every cutoff (tied with LightGBM at 2011-09); LightGBM adds nothing over a well-specified linear model
 on 19 aggregated features. The lift over RFM is consistent but modest (+0.005 to +0.024 ROC-AUC).
 
 **Calibration - the honest finding.** Platt scaling was chosen on validation (CV Brier 0.1640 vs isotonic
@@ -227,6 +259,6 @@ the full pytest suite on synthetic + edge-case fixtures (no raw data needed).
 ├── tests/                    unit, data-contract, leakage, metric-regression tests
 ├── docs/                     memo, dictionary, ER + pipeline diagrams, figures
 ├── artifacts/                aggregated metrics (json/csv); customer-level files git-ignored
-└── app/streamlit_app.py      score/segment explorer
+└── app/                      multipage Streamlit app, app/data/ (compact artifacts), app/requirements.txt
 ```
 MIT licensed. Dataset: Chen, D. (2012), UCI ML Repository, CC BY 4.0.

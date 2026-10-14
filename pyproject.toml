@@ -42,3 +42,4 @@ addopts = "-q"
 "src/churn_clv/features.py" = ["E501"]
 "scripts/build_memo.py" = ["E501"]   # memo template text
 "scripts/make_notebooks.py" = ["E501"]  # notebook cell sources
+"app/views/*.py" = ["E501"]  # long f-string narrative text

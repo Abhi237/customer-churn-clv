@@ -14,3 +14,5 @@ joblib==1.6.0
 scipy==1.17.1
 pytest==9.1.1
 ruff==0.17.0
+streamlit==1.65.0
+plotly==7.1.0

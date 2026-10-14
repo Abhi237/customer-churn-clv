@@ -1,0 +1,7 @@
+# Deploy-time dependencies for the Streamlit app only (Streamlit Community Cloud, Python 3.11+).
+# The app reads precomputed artifacts in app/data/ - no ML libraries are needed.
+streamlit==1.65.0
+pandas==3.0.6
+numpy==2.4.6
+pyarrow==25.0.1
+plotly==7.1.0

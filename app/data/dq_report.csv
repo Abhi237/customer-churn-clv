@@ -1,0 +1,14 @@
+check_name,n_rows
+total_rows,1067371
+exact_duplicate_rows,34335
+cancellation_lines_invoice_C,19494
+adjustment_lines_invoice_A,6
+negative_quantity_lines,22950
+negative_qty_not_cancelled,3457
+zero_or_negative_price,6207
+missing_customer_id,243007
+missing_description,4382
+non_product_stock_code,5834
+abs_quantity_outlier,11
+distinct_customers,5942
+distinct_invoices,53628

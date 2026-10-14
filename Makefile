@@ -3,7 +3,7 @@ PY      ?= .venv/bin/python
 CHURN   ?= .venv/bin/churn
 CUTOFF  ?= 2011-12-10
 
-.PHONY: setup data sql train report test lint score app all clean
+.PHONY: setup data sql train report test lint score app app-data screenshots all clean
 
 setup:            ## create venv and install pinned deps + package
 	python3.11 -m venv .venv
@@ -36,10 +36,16 @@ lint:
 test: lint        ## lint + pytest
 	$(PY) -m pytest
 
-app:              ## Streamlit explorer
-	.venv/bin/streamlit run app/streamlit_app.py
+app-data:         ## export compact aggregated artifacts for the Streamlit app (app/data/, committed)
+	$(PY) scripts/export_app_data.py
 
-all: data sql train report test
+app:              ## run the multipage Streamlit app on :8501
+	.venv/bin/streamlit run app/streamlit_app.py --server.port 8501
+
+screenshots:      ## capture every app page (app must be running on :8501; needs playwright chromium)
+	$(PY) scripts/screenshot_app.py
+
+all: data sql train report app-data test
 
 clean:
 	rm -rf data/processed artifacts/*.parquet reports/*_files

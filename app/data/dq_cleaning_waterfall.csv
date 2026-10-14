@@ -1,0 +1,5 @@
+step,n_rows
+raw rows,1067371
+clean lines (sales + cancellations),794154
+clean sale lines,776570
+clean cancellation lines,17584
