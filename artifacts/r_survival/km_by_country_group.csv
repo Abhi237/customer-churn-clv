@@ -1,0 +1,11 @@
+strata,time,survival,n_risk
+country_group=United Kingdom,90,0.1918856951902084,691
+country_group=United Kingdom,365,0.04094276872930684,96
+country_group=EIRE,90,1,1
+country_group=EIRE,365,1,1
+country_group=France,90,0.22150101419878293,12
+country_group=France,365,0.06152805949966194,2
+country_group=Germany,90,0.26886324075079093,19
+country_group=Germany,365,0.112146164591239,6
+country_group=Other,90,0.15203105945244116,35
+country_group=Other,365,0.0170946640562491,2

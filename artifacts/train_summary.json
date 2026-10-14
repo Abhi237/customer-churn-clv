@@ -1,0 +1,247 @@
+{
+  "n_train_rows": 14482,
+  "n_valid": 4324,
+  "n_test": 4323,
+  "churn_rate": {
+    "train": 0.5694655434332274,
+    "valid": 0.633672525439408,
+    "test": 0.5045107564191533
+  },
+  "churn_rate_by_train_cutoff": {
+    "2010-06-01": 0.5029806259314457,
+    "2010-09-01": 0.4167929675659291,
+    "2010-12-01": 0.6683179995281906,
+    "2011-03-01": 0.6312206572769953
+  },
+  "calibration": {
+    "Logistic regression": {
+      "cv_brier_on_valid": {
+        "isotonic": 0.16497954211052912,
+        "platt": 0.16395465661703928
+      },
+      "chosen": "platt"
+    },
+    "LightGBM": {
+      "cv_brier_on_valid": {
+        "isotonic": 0.16508783181265393,
+        "platt": 0.16419417529306798
+      },
+      "chosen": "platt"
+    }
+  },
+  "final_model": "Logistic regression + platt",
+  "lgbm_params": {
+    "num_leaves": 4,
+    "min_child_samples": 200,
+    "n_estimators": 400,
+    "learning_rate": 0.03
+  },
+  "calibration_in_the_large_test": {
+    "Recency rule": {
+      "mean_pred": 0.6393971471259587,
+      "observed": 0.5045107564191533
+    },
+    "RFM heuristic": {
+      "mean_pred": 0.5475211915672926,
+      "observed": 0.5045107564191533
+    },
+    "Logistic regression": {
+      "mean_pred": 0.5975685623552222,
+      "observed": 0.5045107564191533
+    },
+    "Logistic regression + platt": {
+      "mean_pred": 0.6275904280859794,
+      "observed": 0.5045107564191533
+    },
+    "LightGBM": {
+      "mean_pred": 0.6317747033694611,
+      "observed": 0.5045107564191533
+    },
+    "LightGBM + platt": {
+      "mean_pred": 0.63786419934286,
+      "observed": 0.5045107564191533
+    }
+  },
+  "test_metrics": [
+    {
+      "model": "Recency rule",
+      "calibration": "none",
+      "roc_auc": 0.7057719006905834,
+      "pr_auc": 0.6695192550672229,
+      "brier": 0.23534419256293915,
+      "log_loss": 0.6695954677745923,
+      "ece": 0.13488639070680516,
+      "lift_top10": 1.44653436724684,
+      "lift_top20": 1.4390407963680023,
+      "gain_top20": 0.2879413113250802,
+      "gain_top30": 0.4218248509857863,
+      "base_rate": 0.5045107564191533
+    },
+    {
+      "model": "RFM heuristic",
+      "calibration": "none",
+      "roc_auc": 0.7500386368822327,
+      "pr_auc": 0.7148059283989194,
+      "brier": 0.20396258123835984,
+      "log_loss": 0.5946863870641644,
+      "ece": 0.04374985569054973,
+      "lift_top10": 1.6387952641593948,
+      "lift_top20": 1.546739709471977,
+      "gain_top20": 0.30949105914718017,
+      "gain_top30": 0.4493351673544246,
+      "base_rate": 0.5045107564191533
+    },
+    {
+      "model": "Logistic regression",
+      "calibration": "none",
+      "roc_auc": 0.7688420622719514,
+      "pr_auc": 0.7370302480927425,
+      "brier": 0.20199727018226246,
+      "log_loss": 0.5870273677879592,
+      "ece": 0.09340839420521052,
+      "lift_top10": 1.6387952641593948,
+      "lift_top20": 1.5192421146369197,
+      "gain_top20": 0.30398899587345257,
+      "gain_top30": 0.442457588262265,
+      "base_rate": 0.5045107564191533
+    },
+    {
+      "model": "Logistic regression",
+      "calibration": "isotonic",
+      "roc_auc": 0.7675997955349037,
+      "pr_auc": 0.7275776627865892,
+      "brier": 0.2099407379804294,
+      "log_loss": 0.6211374621748755,
+      "ece": 0.12360907468054536,
+      "lift_top10": 1.634217623756715,
+      "lift_top20": 1.5192421146369197,
+      "gain_top20": 0.30398899587345257,
+      "gain_top30": 0.4401650618982118,
+      "base_rate": 0.5045107564191533
+    },
+    {
+      "model": "Logistic regression",
+      "calibration": "platt",
+      "roc_auc": 0.7688420622719514,
+      "pr_auc": 0.7370302480927425,
+      "brier": 0.20926353673031445,
+      "log_loss": 0.6092184610376793,
+      "ece": 0.12307967232105414,
+      "lift_top10": 1.6387952641593948,
+      "lift_top20": 1.5192421146369197,
+      "gain_top20": 0.30398899587345257,
+      "gain_top30": 0.442457588262265,
+      "base_rate": 0.5045107564191533
+    },
+    {
+      "model": "LightGBM",
+      "calibration": "none",
+      "roc_auc": 0.7644755594427897,
+      "pr_auc": 0.7252401022673,
+      "brier": 0.21147473148160856,
+      "log_loss": 0.6110712899716183,
+      "ece": 0.12726394695030765,
+      "lift_top10": 1.5380871753004377,
+      "lift_top20": 1.4779957223843336,
+      "gain_top20": 0.29573590096286106,
+      "gain_top30": 0.4419990829894544,
+      "base_rate": 0.5045107564191533
+    },
+    {
+      "model": "LightGBM",
+      "calibration": "isotonic",
+      "roc_auc": 0.762137653471904,
+      "pr_auc": 0.7091618336133508,
+      "brier": 0.21425705396274916,
+      "log_loss": 0.6354158144998792,
+      "ece": 0.13500240408320477,
+      "lift_top10": 1.5014660520789984,
+      "lift_top20": 1.4894530535656074,
+      "gain_top20": 0.29802842732691426,
+      "gain_top30": 0.4346629986244842,
+      "base_rate": 0.5045107564191533
+    },
+    {
+      "model": "LightGBM",
+      "calibration": "platt",
+      "roc_auc": 0.7644755594427897,
+      "pr_auc": 0.7252401022673,
+      "brier": 0.21390329462555177,
+      "log_loss": 0.6222705231880177,
+      "ece": 0.13335344292370666,
+      "lift_top10": 1.5380871753004377,
+      "lift_top20": 1.4779957223843336,
+      "gain_top20": 0.29573590096286106,
+      "gain_top30": 0.4419990829894544,
+      "base_rate": 0.5045107564191533
+    }
+  ],
+  "shap_top_lgbm": [
+    {
+      "feature": "active_months_12m",
+      "mean_abs_shap": 0.308043851260437
+    },
+    {
+      "feature": "invoices_180d",
+      "mean_abs_shap": 0.1882375791856517
+    },
+    {
+      "feature": "revenue_180d",
+      "mean_abs_shap": 0.1844935070298988
+    },
+    {
+      "feature": "mean_interpurchase_days",
+      "mean_abs_shap": 0.16440539060776255
+    },
+    {
+      "feature": "tenure_days",
+      "mean_abs_shap": 0.14340230223446376
+    },
+    {
+      "feature": "recency_to_gap_ratio",
+      "mean_abs_shap": 0.09198292343159054
+    },
+    {
+      "feature": "revenue_90d",
+      "mean_abs_shap": 0.08970351545597859
+    },
+    {
+      "feature": "invoices_90d",
+      "mean_abs_shap": 0.07865475860488556
+    }
+  ],
+  "shap_top_logreg": [
+    {
+      "feature": "monetary_total",
+      "mean_abs_shap": 1.473735815307012
+    },
+    {
+      "feature": "frequency",
+      "mean_abs_shap": 1.2308293171550566
+    },
+    {
+      "feature": "mean_interpurchase_days",
+      "mean_abs_shap": 0.9446901861477693
+    },
+    {
+      "feature": "avg_order_value",
+      "mean_abs_shap": 0.641767493670348
+    },
+    {
+      "feature": "recency_to_gap_ratio",
+      "mean_abs_shap": 0.5910551466164683
+    },
+    {
+      "feature": "tenure_days",
+      "mean_abs_shap": 0.59084098904201
+    },
+    {
+      "feature": "n_distinct_products",
+      "mean_abs_shap": 0.3540471018468307
+    },
+    {
+      "feature": "recency_days",
+      "mean_abs_shap": 0.3249075880214109
+    }
+  ]
+}

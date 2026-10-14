@@ -1,0 +1,41 @@
+{
+  "dq_report": {
+    "total_rows": 1067371,
+    "exact_duplicate_rows": 34335,
+    "cancellation_lines_invoice_C": 19494,
+    "adjustment_lines_invoice_A": 6,
+    "negative_quantity_lines": 22950,
+    "negative_qty_not_cancelled": 3457,
+    "zero_or_negative_price": 6207,
+    "missing_customer_id": 243007,
+    "missing_description": 4382,
+    "non_product_stock_code": 5834,
+    "abs_quantity_outlier": 11,
+    "distinct_customers": 5942,
+    "distinct_invoices": 53628
+  },
+  "waterfall": {
+    "raw rows": 1067371,
+    "clean lines (sales + cancellations)": 794154,
+    "clean sale lines": 776570,
+    "clean cancellation lines": 17584
+  },
+  "n_invoices_clean": 36592,
+  "n_customers_clean": 5852,
+  "revenue_clean_gbp": 16815885.170000114,
+  "returns_clean_gbp": 464300.23000000836,
+  "date_min": "2009-12-01",
+  "date_max": "2011-12-09",
+  "n_countries": 41,
+  "uk_customer_share": 0.9114832535885168,
+  "one_time_buyer_share": 0.27665755297334244,
+  "month1_retention_mean": 0.20989927377323506,
+  "rfm_segments": {
+    "Hibernating": 1525,
+    "Champions": 1472,
+    "Loyal": 1223,
+    "At risk": 815,
+    "New / Promising": 439,
+    "Needs attention": 378
+  }
+}
