@@ -45,8 +45,8 @@ def run_sql(cfg=None) -> dict:
         "waterfall": dict(con.execute("SELECT * FROM dq_cleaning_waterfall").fetchall()),
         "n_invoices_clean": con.execute("SELECT COUNT(*) FROM fct_invoices").fetchone()[0],
         "n_customers_clean": con.execute("SELECT COUNT(*) FROM dim_customers").fetchone()[0],
-        "revenue_clean_gbp": con.execute("SELECT SUM(revenue) FROM fct_invoices").fetchone()[0],
-        "returns_clean_gbp": con.execute("SELECT SUM(returned_amount) FROM fct_returns").fetchone()[0],
+        "revenue_clean_gbp": con.execute("SELECT CAST(SUM(revenue) AS DOUBLE) FROM fct_invoices").fetchone()[0],
+        "returns_clean_gbp": con.execute("SELECT CAST(SUM(returned_amount) AS DOUBLE) FROM fct_returns").fetchone()[0],
         "date_min": str(con.execute("SELECT MIN(invoice_date) FROM fct_invoices").fetchone()[0]),
         "date_max": str(con.execute("SELECT MAX(invoice_date) FROM fct_invoices").fetchone()[0]),
         "n_countries": con.execute("SELECT COUNT(DISTINCT home_country) FROM dim_customers").fetchone()[0],
@@ -158,6 +158,8 @@ def train(cfg=None) -> dict:
                  "calibration_cutoff": ch["valid_cutoff"]}, art / "churn_model.joblib")
     test_scored = test.assign(churn_prob=test_probs[final_label], churn_prob_raw=test_probs[final_name])
     test_scored.to_parquet(art / "test_scored.parquet", index=False)
+    pd.DataFrame({"customer_id": test["customer_id"], "churned": yt, **test_probs}).to_parquet(
+        art / "test_probs.parquet", index=False)
 
     lifts = {k: lift_table(yt, test_probs[k]) for k in
              ["Recency rule", "RFM heuristic", "Logistic regression",
@@ -205,6 +207,10 @@ def explain(model, test: pd.DataFrame, fig_dir: Path, art: Path, n_sample: int =
     imp = pd.DataFrame({"feature": FEATURE_COLUMNS, "mean_abs_shap": np.abs(sv.values).mean(0)}) \
         .sort_values("mean_abs_shap", ascending=False)
     imp.to_csv(art / "shap_importance.csv", index=False)
+    full = expl(X)
+    pd.DataFrame(full.values, columns=FEATURE_COLUMNS).assign(
+        customer_id=test["customer_id"].to_numpy(), base_value=float(np.ravel(full.base_values)[0])
+    ).to_parquet(art / "shap_values_lgbm.parquet", index=False)
     plt.figure()
     shap.plots.beeswarm(sv, max_display=12, show=False)
     plt.title("Global SHAP (LightGBM, test cutoff; log-odds of churn proxy)")
@@ -238,6 +244,9 @@ def explain_linear(pipe, train: pd.DataFrame, test: pd.DataFrame, fig_dir: Path,
     imp = pd.DataFrame({"feature": FEATURE_COLUMNS, "mean_abs_shap": np.abs(sv.values).mean(0)}) \
         .sort_values("mean_abs_shap", ascending=False)
     imp.to_csv(art / "shap_importance_logreg.csv", index=False)
+    pd.DataFrame(sv.values, columns=FEATURE_COLUMNS).assign(
+        customer_id=test["customer_id"].to_numpy(), base_value=float(np.ravel(sv.base_values)[0])
+    ).to_parquet(art / "shap_values_logreg.parquet", index=False)
     plt.figure()
     shap.plots.beeswarm(sv, max_display=12, show=False)
     plt.title("Global SHAP (logistic regression, test cutoff; transformed features)")

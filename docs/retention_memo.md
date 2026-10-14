@@ -63,7 +63,7 @@ per contact, the rule selects 3,657 customers (85%), costing
 GBP 18k with an expected net value of GBP 35k. Under a conservative
 scenario (5% uplift, GBP 10 contact) it selects 690
 customers for GBP 3,906. Across the 48-scenario grid the expected net value ranges
-from GBP 326 to GBP 219k. **These are not
+from GBP 325 to GBP 219k. **These are not
 observed impacts**; the probabilities feeding them are over-stated at this date (section 3).
 
 ## 6. Next steps

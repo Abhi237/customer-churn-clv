@@ -27,7 +27,7 @@ SELECT
     raw_line_id, invoice, stock_code, description, quantity, invoice_ts,
     CAST(invoice_ts AS DATE)              AS invoice_date,
     unit_price, customer_id, country, line_type,
-    quantity * unit_price                 AS line_amount
+    CAST(ROUND(quantity * unit_price, 3) AS DECIMAL(18, 3)) AS line_amount   -- exact sums (reproducible)
 FROM typed
 WHERE customer_id IS NOT NULL
   AND line_type IN ('sale', 'cancellation')

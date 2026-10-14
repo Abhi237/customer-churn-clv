@@ -6,8 +6,8 @@
     "n_targeted": 3657,
     "share_targeted": 0.8459403192227619,
     "campaign_cost_gbp": 18285.0,
-    "expected_net_value_gbp": 35478.2653177193,
-    "expected_net_value_target_all_gbp": 34216.148223420554,
+    "expected_net_value_gbp": 35478.22713337616,
+    "expected_net_value_target_all_gbp": 34216.10458405043,
     "targeted_observed_churn_rate": 0.5061525840853158,
     "targeted_segment_mix": {
       "Low value / Low risk": 74,
@@ -20,7 +20,7 @@
       "High value / Medium risk": 64,
       "High value / High risk": 7
     },
-    "spearman_clv_vs_actual_90d_revenue": 0.5235227749962209,
+    "spearman_clv_vs_actual_90d_revenue": 0.5235225771842477,
     "spearman_bgnbd_purchases_vs_actual_90d": 0.536134342158756
   },
   "segment_sizes": [
@@ -71,8 +71,8 @@
     }
   ],
   "sensitivity_range_net_value_gbp": [
-    325.5008282059441,
-    219011.11739408487
+    325.49870466239173,
+    219010.94289376136
   ],
   "sensitivity_range_n_targeted": [
     32,

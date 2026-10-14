@@ -88,7 +88,7 @@ def make_lgbm(random_state: int = 42, params: dict | None = None) -> lgb.LGBMCla
     p = {**LGBM_GRID[2], **(params or {})}
     return lgb.LGBMClassifier(
         **p, subsample=0.8, subsample_freq=1, colsample_bytree=0.8, reg_lambda=1.0,
-        random_state=random_state, verbose=-1,
+        random_state=random_state, verbose=-1, deterministic=True, force_row_wise=True, n_jobs=4,
     )
 
 

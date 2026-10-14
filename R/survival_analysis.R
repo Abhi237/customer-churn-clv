@@ -33,7 +33,14 @@ lines <- c(sprintf("customers (excl. 2009-12 cohort): %d; lapse events: %d (%.1f
                    nrow(d), sum(d$event), 100 * mean(d$event)))
 
 theme_set(theme_minimal(base_size = 11))
+km_curves <- list()
+curve_df <- function(fit, seg) {
+  st <- if (is.null(fit$strata)) rep("All", length(fit$time)) else rep(sub(".*=", "", names(fit$strata)), fit$strata)
+  tibble(segment_var = seg, stratum = st, time = fit$time, surv = fit$surv, lower = fit$lower,
+         upper = fit$upper, n_risk = fit$n.risk)
+}
 save_km <- function(fit, data, name, title, legend_title) {
+  km_curves[[name]] <<- curve_df(fit, legend_title)
   if (!is.null(fit$strata)) names(fit$strata) <- sub(".*=", "", names(fit$strata))
   p <- ggsurvplot(fit, data = data, conf.int = TRUE, risk.table = TRUE, xlim = c(0, 600),
                   break.time.by = 90, xlab = "Days since first purchase",
@@ -69,6 +76,7 @@ for (v in c("first_value_tier", "country_group", "acq_quarter")) {
             file.path(out_dir, paste0("km_by_", v, ".csv")))
   save_km(fit, d, paste0("km_by_", v), paste("Time to first 90-day lapse by", gsub("_", " ", v)), v)
 }
+write_csv(bind_rows(km_curves), file.path(out_dir, "km_curves.csv"))
 write_csv(bind_rows(logrank), file.path(out_dir, "logrank_tests.csv"))
 
 # ---- Cox PH

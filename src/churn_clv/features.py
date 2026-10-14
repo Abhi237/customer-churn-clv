@@ -98,8 +98,9 @@ def build_snapshot(con: duckdb.DuckDBPyConnection, cutoff: str | date, horizon_d
     sql = FEATURE_SQL.format(cutoff=c.isoformat(), horizon=int(horizon_days), lookback=int(lookback_days))
     df = con.execute(sql).df()
     df["return_ratio_365d"] = df["return_ratio_365d"].fillna(0.0)
-    for col in FEATURE_COLUMNS:
-        df[col] = df[col].astype(float)
+    # round away non-deterministic float noise from DuckDB's parallel aggregation (reproducible runs)
+    for col in FEATURE_COLUMNS + ["future_revenue"]:
+        df[col] = df[col].astype(float).round(6)
     if not with_label:
         df = df.drop(columns=["future_invoices", "future_revenue", "churned"])
     return df

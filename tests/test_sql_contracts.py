@@ -90,7 +90,7 @@ def test_edge_exclusions(edge_con):
 
 def test_edge_returns(edge_con):
     amt = edge_con.execute("SELECT returned_amount FROM fct_returns WHERE invoice = 'C900002'").fetchone()[0]
-    assert amt == pytest.approx(5.10)
+    assert float(amt) == pytest.approx(5.10)
 
 
 def test_dq_report_counts(edge_con):

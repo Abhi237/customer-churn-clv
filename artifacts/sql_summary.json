@@ -22,8 +22,8 @@
   },
   "n_invoices_clean": 36592,
   "n_customers_clean": 5852,
-  "revenue_clean_gbp": 16815885.170000114,
-  "returns_clean_gbp": 464300.23000000836,
+  "revenue_clean_gbp": 16815885.17,
+  "returns_clean_gbp": 464300.23,
   "date_min": "2009-12-01",
   "date_max": "2011-12-09",
   "n_countries": 41,
@@ -32,10 +32,10 @@
   "month1_retention_mean": 0.20989927377323506,
   "rfm_segments": {
     "Hibernating": 1525,
-    "Champions": 1472,
-    "Loyal": 1223,
+    "Champions": 1474,
+    "Loyal": 1221,
     "At risk": 815,
-    "New / Promising": 439,
-    "Needs attention": 378
+    "New / Promising": 440,
+    "Needs attention": 377
   }
 }
