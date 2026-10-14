@@ -1,0 +1,44 @@
+# Central parameters for the churn & CLV pipeline.
+paths:
+  raw_xlsx: data/raw/online_retail_II.xlsx
+  raw_zip: data/raw/online_retail_ii.zip
+  interim_parquet: data/interim/online_retail_ii.parquet
+  duckdb: data/processed/retail.duckdb
+  artifacts: artifacts
+  figures: docs/figures
+
+data:
+  url: https://archive.ics.uci.edu/static/public/502/online+retail+ii.zip
+  non_product_codes: [POST, DOT, M, MANUAL, BANK CHARGES, C2, CRUK, D, PADS, ADJUST, ADJUST2, AMAZONFEE, S, B, TEST001, TEST002, GIFT, SP1002]
+  max_abs_quantity: 10000      # lines above this are treated as data-entry outliers
+
+churn:
+  horizon_days: 90             # churn PROXY: no purchase in the 90 days after cutoff
+  lookback_active_days: 365    # population: customers with >=1 purchase in prior 365 days
+  train_cutoffs: ["2010-06-01", "2010-09-01", "2010-12-01", "2011-03-01"]
+  valid_cutoff: "2011-06-01"
+  test_cutoff: "2011-09-01"
+  random_state: 42
+
+clv:
+  calibration_end: "2011-06-01"   # BG/NBD calibration/holdout validation split
+  observation_end: "2011-12-09"
+  horizon_months: 12
+  discount_rate_monthly: 0.01
+  penalizer: 0.001
+
+targeting:
+  # ALL ASSUMED, NOT OBSERVED. Used only for scenario / sensitivity analysis.
+  contact_cost_gbp: 5.0
+  uplift: 0.10                 # assumed RELATIVE reduction in churn probability if contacted
+  gross_margin: 0.30
+  sensitivity:
+    contact_cost_gbp: [1.0, 5.0, 10.0, 20.0]
+    uplift: [0.05, 0.10, 0.20, 0.30]
+    gross_margin: [0.20, 0.30, 0.40]
+  # risk tiers are relative (tertiles of calibrated churn probability) because absolute levels drift
+  # seasonally (see README: calibration-in-the-large at the test cutoff)
+  risk_quantiles: [0.0, 0.3333, 0.6667, 1.0]
+  risk_labels: [Low risk, Medium risk, High risk]
+  value_quantiles: [0.0, 0.5, 0.8, 1.0]
+  value_labels: [Low value, Mid value, High value]

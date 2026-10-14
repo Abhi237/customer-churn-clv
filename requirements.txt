@@ -1,0 +1,10 @@
+# Full pinned environment used to produce the committed results (Python 3.11.17).
+-r requirements-ci.txt
+openpyxl==3.1.5
+jupyter==1.1.1
+nbconvert==7.17.2
+nbformat==5.11.1
+ipykernel==7.4.0
+streamlit==1.65.0
+markdown==3.11.1
+weasyprint==70.0
