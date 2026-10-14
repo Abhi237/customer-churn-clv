@@ -5,7 +5,7 @@
 > forecast holdout purchases within 1%), and turns both into a value x risk targeting rule whose
 > economics are shown as an explicit, assumption-driven sensitivity range - not a promised impact.
 
-[![CI](https://github.com/<your-user>/customer-churn-clv/actions/workflows/ci.yml/badge.svg)](.github/workflows/ci.yml)
+[![CI](https://github.com/Abhi237/customer-churn-clv/actions/workflows/ci.yml/badge.svg)](https://github.com/Abhi237/customer-churn-clv/actions/workflows/ci.yml)
 · SQL (DuckDB) · Python (scikit-learn, LightGBM, SHAP, lifetimes) · R (survival, survminer, Quarto)
 
 | | |
@@ -204,7 +204,7 @@ one wholesaler, two years, 91% UK; missing-ID lines (23% of raw) excluded; CLV h
 Requirements: Python 3.11, (optional) R >= 4.3 with `survival survminer dplyr readr ggplot2 knitr rmarkdown`
 (versions in `renv.lock`), Quarto >= 1.4 for HTML.
 ```bash
-git clone <repo> && cd customer-churn-clv
+git clone https://github.com/Abhi237/customer-churn-clv.git && cd customer-churn-clv
 make setup          # venv + pinned requirements.txt + editable package
 make data           # download UCI zip, xlsx -> parquet       (~1-2 min)
 make sql            # DuckDB SQL model                          (~10 s)
