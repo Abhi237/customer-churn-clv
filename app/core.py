@@ -16,6 +16,9 @@ DATA = Path(__file__).resolve().parent / "data"
 DOCS = Path(__file__).resolve().parents[1] / "docs"
 REPO_URL = "https://github.com/Abhi237/customer-churn-clv"
 MEMO_URL = f"{REPO_URL}/blob/main/docs/retention_memo.pdf"
+DATA_SOURCE = "https://github.com/bradleyboehmke/completejourney"
+TITLE = ("Using calibrated gradient boosting and BG/NBD models to forecast household churn and lifetime value "
+         "on a US grocery loyalty panel")
 
 NAVY, RED, GREEN, PURPLE, ORANGE, TEAL, GREY = ("#1f4e79", "#c0504d", "#5b9a3c", "#8064a2", "#e8892b",
                                                 "#2e9bb5", "#7f8c99")
@@ -57,7 +60,7 @@ def setup_page(title: str, subtitle: str | None = None) -> None:
 
 
 def assumed_banner(text: str) -> None:
-    st.markdown(f"<div class='assumed'>⚠️ <b>ASSUMED inputs - scenario only.</b> {text}</div>",
+    st.markdown(f"<div class='assumed'><b>ASSUMED inputs - scenario only.</b> {text}</div>",
                 unsafe_allow_html=True)
 
 
@@ -76,25 +79,25 @@ def csv(name: str) -> pd.DataFrame:
 
 
 @st.cache_data(show_spinner=False)
-def customers() -> pd.DataFrame:
-    df = pd.read_parquet(DATA / "customers.parquet")
-    df["customer_id"] = df["customer_id"].astype(str)
+def households() -> pd.DataFrame:
+    df = pd.read_parquet(DATA / "households.parquet")
+    df["household_id"] = df["household_id"].astype(str)
     return df
 
 
 @st.cache_data(show_spinner=False)
 def shap_values(model: str = "logreg") -> pd.DataFrame:
     df = pd.read_parquet(DATA / f"shap_values_{model}.parquet")
-    df["customer_id"] = df["customer_id"].astype(str)
+    df["household_id"] = df["household_id"].astype(str)
     return df
 
 
-def gbp(x: float) -> str:
+def usd(x: float) -> str:
     if abs(x) >= 1e6:
-        return f"£{x / 1e6:,.2f}m"
+        return f"${x / 1e6:,.2f}M"
     if abs(x) >= 1e4:
-        return f"£{x / 1e3:,.0f}k"
-    return f"£{x:,.0f}"
+        return f"${x / 1e3:,.0f}K"
+    return f"${x:,.0f}"
 
 
 def test_metrics() -> pd.DataFrame:
@@ -102,15 +105,31 @@ def test_metrics() -> pd.DataFrame:
     return m[m.split == "test"].copy()
 
 
+def final_row() -> pd.Series:
+    """Test-split metrics row of the final (validation-selected) model."""
+    m = test_metrics()
+    name = summary()["train_summary"]["final_model"]
+    base, _, cal = name.partition(" + ")
+    return m[(m.model == base) & (m.calibration == (cal or "none"))].iloc[0]
+
+
 VALUE_ORDER = ["High value", "Mid value", "Low value"]
 RISK_ORDER = ["Low risk", "Medium risk", "High risk"]
 FEATURE_LABELS = {
-    "recency_days": "Days since last purchase", "tenure_days": "Days since first purchase",
-    "frequency": "Invoices (all history)", "monetary_total": "Total spend", "avg_order_value": "Avg order value",
-    "invoices_30d": "Invoices, last 30d", "invoices_90d": "Invoices, last 90d", "invoices_180d": "Invoices, last 180d",
-    "revenue_90d": "Revenue, last 90d", "revenue_180d": "Revenue, last 180d",
-    "n_distinct_products": "Distinct products", "avg_products_per_invoice": "Products per invoice",
-    "mean_interpurchase_days": "Mean gap between purchases", "std_interpurchase_days": "Std of purchase gaps",
-    "active_months_12m": "Active months (last 12)", "n_returns_365d": "Returns, last 365d",
-    "return_ratio_365d": "Return ratio", "recency_to_gap_ratio": "Recency / usual gap", "is_uk": "UK customer",
+    "recency_days": "Days since last shopping trip", "trips_per_week": "Shopping trips per week",
+    "spend_per_week": "Spend per week", "trips_28d": "Trips, last 28 days", "trips_42d": "Trips, last 42 days",
+    "spend_28d": "Spend, last 28 days", "spend_42d": "Spend, last 42 days",
+    "trip_ratio_28d": "Recent trip rate vs own average", "mean_interpurchase_days": "Mean days between trips",
+    "std_interpurchase_days": "Std of days between trips", "recency_to_gap_ratio": "Recency / usual gap",
+    "active_week_share": "Share of weeks with a trip", "avg_basket_spend": "Average basket spend",
+    "avg_units_per_basket": "Units per basket", "avg_lines_per_basket": "Product lines per basket",
+    "share_fresh": "Fresh share of spend", "share_grocery": "Grocery share of spend",
+    "share_fuel": "Fuel share of spend", "share_health_beauty": "Health and beauty share",
+    "share_private_label": "Private-label share", "retail_disc_share": "Store-discount share of shelf value",
+    "coupon_disc_share": "Coupon-discount share of shelf value",
+    "coupon_basket_share": "Share of baskets with a coupon",
+    "n_stores_42d": "Stores visited, last 42 days", "top_store_share": "Share of trips at top store",
+    "n_campaigns_90d": "Campaigns received, last 90 days", "n_campaigns_active": "Campaigns active now",
+    "n_type_a_90d": "Type A campaigns, last 90 days", "redemptions_90d": "Coupon redemptions, last 90 days",
+    "redemptions_42d": "Coupon redemptions, last 42 days",
 }
