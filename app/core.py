@@ -20,6 +20,7 @@ DATA_SOURCE = "https://github.com/bradleyboehmke/completejourney"
 TITLE_PREFIX = "Grocery Household Churn & CLV"
 TITLE_METHOD = ("Using calibrated gradient boosting and BG/NBD models to forecast household churn and lifetime value "
                 "on a US grocery loyalty panel")
+QUESTION = "Which households deserve retention spend, and what are they worth?"
 TITLE = f"{TITLE_PREFIX} - {TITLE_METHOD}"
 
 NAVY, RED, GREEN, PURPLE, ORANGE, TEAL, GREY = ("#1f4e79", "#c0504d", "#5b9a3c", "#8064a2", "#e8892b",
@@ -50,13 +51,22 @@ h2, h3 {font-weight: 600; letter-spacing: -0.01em;}
 .assumed {background:#fff4e5; border:1px solid #f5c27a; border-radius:8px; padding:10px 14px; color:#7a4a00;}
 .callout {background:#eef4fb; border-left:4px solid #1f4e79; border-radius:6px; padding:12px 16px;}
 .small {font-size:0.85rem; color:#5a6676;}
+.tagline {font-size:1.05rem; color:#4a5768; margin:-0.4rem 0 1.2rem 0; line-height:1.4;}
+.headline-question {font-size:1.9rem; font-weight:700; letter-spacing:-0.01em; color:#1f4e79; line-height:1.25;
+  margin:0.2rem 0 1rem 0;}
 </style>
 """
 
 
-def setup_page(title: str, subtitle: str | None = None) -> None:
+def setup_page(title: str, subtitle: str | None = None, tagline: str | None = None,
+               question: str | None = None) -> None:
+    """Page header. Optional tagline (smaller line directly under the title) and question (prominent heading)."""
     st.markdown(CSS, unsafe_allow_html=True)
     st.title(title)
+    if tagline:
+        st.markdown(f"<p class='tagline'>{tagline}</p>", unsafe_allow_html=True)
+    if question:
+        st.markdown(f"<h2 class='headline-question'>{question}</h2>", unsafe_allow_html=True)
     if subtitle:
         st.markdown(f"<p class='small'>{subtitle}</p>", unsafe_allow_html=True)
 

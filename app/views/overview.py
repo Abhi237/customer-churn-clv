@@ -1,6 +1,7 @@
 import plotly.express as px
 import streamlit as st
 from core import (
+    QUESTION,
     RISK_ORDER,
     TITLE_METHOD,
     TITLE_PREFIX,
@@ -17,15 +18,14 @@ from core import (
 
 s = summary()
 sq, tr, cl, tg = s["sql_summary"], s["train_summary"], s["clv_summary"], s["targeting_summary"]
-setup_page("Which households deserve retention spend, and what are they worth?",
-           f"<b>{TITLE_PREFIX}</b> - {TITLE_METHOD}. Out-of-time back-test at the {s['config']['churn']['test_cutoff']} scoring date; "
-           "every number is computed by the pipeline.")
+setup_page(TITLE_PREFIX, tagline=TITLE_METHOD, question=QUESTION)
 
 callout("<b>Business question.</b> A US grocery chain has a loyalty card but no subscriptions: households never "
         "cancel, they simply stop shopping. Which households are likely to be inactive for the next 90 days, how much "
         "is their future spend worth, and where could retention budget (coupons, outreach) pay back? "
         "<b>Churn here is a proxy</b> (no purchase in the 90 days after the cutoff), not an observed cancellation.")
-st.write("")
+st.markdown(f"<p class='small'>Out-of-time back-test at the {s['config']['churn']['test_cutoff']} scoring date; "
+            "every number is computed by the pipeline.</p>", unsafe_allow_html=True)
 
 m = test_metrics().set_index(["model", "calibration"])
 fm = final_row()

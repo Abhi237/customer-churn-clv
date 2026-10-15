@@ -9,7 +9,7 @@ from streamlit.testing.v1 import AppTest  # noqa: E402
 
 ROOT = Path(__file__).resolve().parents[1]
 APP = ROOT / "app" / "streamlit_app.py"
-PAGES = {"overview": "retention spend", "data_cleaning": "Data and cleaning", "cohorts": "Cohorts",
+PAGES = {"overview": "Grocery Household Churn & CLV", "data_cleaning": "Data and cleaning", "cohorts": "Cohorts",
          "churn_model": "Churn-proxy model", "clv": "lifetime value", "survival": "Survival",
          "campaigns": "Coupons and campaigns", "demographics": "Demographics", "targeting": "targeting simulator",
          "methodology": "Methodology"}
@@ -89,4 +89,11 @@ def test_project_title_is_prefixed_and_consistent():
     assert (ROOT / "README.md").read_text().splitlines()[0] == f"# {FULL_TITLE}"
     at = AppTest.from_file(str(APP), default_timeout=120).run()
     assert not at.exception
-    assert any(core.TITLE_PREFIX in m.value and core.TITLE_METHOD in m.value for m in at.markdown)
+    assert at.title[0].value == core.TITLE_PREFIX
+    md = [m.value for m in at.markdown]
+    i_method = next(i for i, v in enumerate(md) if core.TITLE_METHOD in v and "tagline" in v)
+    i_question = next(i for i, v in enumerate(md) if core.QUESTION in v and "headline-question" in v)
+    i_callout = next(i for i, v in enumerate(md) if "Business question." in v and "callout" in v)
+    assert i_method < i_question < i_callout          # title, method line, question heading, business callout
+    assert core.QUESTION not in md[i_callout]         # question is its own element, not inside the callout
+    assert any("scoring date" in v for v in md)       # out-of-time back-test note kept
