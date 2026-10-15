@@ -1,52 +1,91 @@
-"""Download UCI Online Retail II and convert both Excel sheets to a single parquet file.
+"""Fetch the Complete Journey grocery data (CC0) and convert it to CSV.
 
-Usage: python scripts/download_data.py [--force]
-Raw data is never committed (see data/README.md).
+Source: the CRAN/GitHub `completejourney` package (https://github.com/bradleyboehmke/completejourney,
+tag v1.1.1, licence CC0), which redistributes the 84.51 Complete Journey 2.0 study data
+(2,469 households, calendar year 2017). The package ships R objects (.rda/.rds), so the conversion to CSV
+uses R (`R/prepare_completejourney.R`, needs Rscript; `data.table` is used if installed).
+
+Usage:
+    python scripts/download_data.py            # download + convert (skips work already done)
+    python scripts/download_data.py --force    # re-download and re-convert
+    python scripts/download_data.py --from-csv DIR   # use CSVs you already have (copy into data/raw)
+
+Manual alternative (no Python): in R, `install.packages("completejourney")`, then
+`completejourney::get_transactions()` and write each table with `data.table::fwrite()`; see data/README.md.
+Raw data is never committed (data/raw is git-ignored).
 """
 from __future__ import annotations
 
 import argparse
+import shutil
+import subprocess
 import urllib.request
-import zipfile
 from pathlib import Path
 
-import pandas as pd
 import yaml
 
 ROOT = Path(__file__).resolve().parents[1]
+CORE_TABLES = ["transactions", "products", "campaigns", "campaign_descriptions", "coupon_redemptions",
+               "demographics", "coupons"]
+
+
+def load_cfg() -> dict:
+    return yaml.safe_load((ROOT / "config/config.yaml").read_text())
+
+
+def source_urls(cfg: dict) -> dict[str, str]:
+    base = cfg["data"]["source_base_url"].format(ref=cfg["data"]["source_ref"])
+    return {f: f"{base}/{f}" for f in cfg["data"]["source_files"]}
+
+
+def expected_ok(raw_dir: Path, cfg: dict) -> bool:
+    return all((raw_dir / f"{t}.csv").exists() for t in CORE_TABLES)
+
+
+def count_rows(path: Path) -> int:
+    with open(path, "rb") as fh:
+        return sum(1 for _ in fh) - 1
+
+
+def verify(raw_dir: Path, cfg: dict) -> None:
+    n = count_rows(raw_dir / "transactions.csv")
+    exp = cfg["data"]["expected_transaction_rows"]
+    if n != exp:
+        raise SystemExit(f"transactions.csv has {n:,} rows, expected {exp:,}: wrong data release?")
+    print(f"OK: transactions.csv {n:,} rows; tables present: {', '.join(CORE_TABLES)}")
 
 
 def main() -> None:
-    ap = argparse.ArgumentParser()
+    ap = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     ap.add_argument("--force", action="store_true")
+    ap.add_argument("--from-csv", type=Path, default=None, help="directory with already converted CSVs")
     args = ap.parse_args()
-    cfg = yaml.safe_load((ROOT / "config/config.yaml").read_text())
-    p = cfg["paths"]
-    zip_path, xlsx, out = ROOT / p["raw_zip"], ROOT / p["raw_xlsx"], ROOT / p["interim_parquet"]
-    zip_path.parent.mkdir(parents=True, exist_ok=True)
-    out.parent.mkdir(parents=True, exist_ok=True)
-    if args.force or not xlsx.exists():
-        if args.force or not zip_path.exists():
-            print(f"Downloading {cfg['data']['url']} ...")
-            urllib.request.urlretrieve(cfg["data"]["url"], zip_path)
-        with zipfile.ZipFile(zip_path) as z:
-            z.extractall(zip_path.parent)
-    if out.exists() and not args.force:
-        print(f"{out} exists; use --force to rebuild")
+    cfg = load_cfg()
+    raw_dir = ROOT / cfg["paths"]["raw_dir"]
+    src_dir = raw_dir / "src"
+    raw_dir.mkdir(parents=True, exist_ok=True)
+
+    if args.from_csv:
+        for t in CORE_TABLES:
+            shutil.copy(args.from_csv / f"{t}.csv", raw_dir / f"{t}.csv")
+        verify(raw_dir, cfg)
         return
-    print("Reading Excel sheets (takes ~1-2 min) ...")
-    sheets = pd.read_excel(xlsx, sheet_name=None, dtype={"Invoice": str, "StockCode": str})
-    frames = []
-    for name, df in sheets.items():
-        df["source_sheet"] = name
-        frames.append(df)
-    df = pd.concat(frames, ignore_index=True)
-    df.columns = [c.strip().replace(" ", "_").lower() for c in df.columns]
-    df = df.rename(columns={"customer_id": "customer_id", "invoicedate": "invoice_date"})
-    df["description"] = df["description"].astype("string")
-    df["country"] = df["country"].astype("string")
-    df.to_parquet(out, index=False)
-    print(f"Wrote {len(df):,} rows -> {out}")
+    if expected_ok(raw_dir, cfg) and not args.force:
+        print(f"{raw_dir} already populated; use --force to rebuild")
+        verify(raw_dir, cfg)
+        return
+    if shutil.which("Rscript") is None:
+        raise SystemExit("Rscript not found. Install R, or convert the package data yourself and rerun with "
+                         "--from-csv DIR (see data/README.md).")
+    src_dir.mkdir(parents=True, exist_ok=True)
+    for name, url in source_urls(cfg).items():
+        dest = src_dir / name
+        if dest.exists() and not args.force:
+            continue
+        print(f"downloading {url}")
+        urllib.request.urlretrieve(url, dest)
+    subprocess.run(["Rscript", str(ROOT / "R/prepare_completejourney.R"), str(src_dir), str(raw_dir)], check=True)
+    verify(raw_dir, cfg)
 
 
 if __name__ == "__main__":

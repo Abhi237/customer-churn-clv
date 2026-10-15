@@ -1,20 +1,21 @@
 -- 07_rfm.sql
--- RFM snapshot as of params.rfm_as_of (default: day after last transaction). Quintile scores via NTILE.
-CREATE OR REPLACE TABLE customer_rfm AS
+-- RFM snapshot as of params.rfm_as_of (day after the last transaction). Quintile scores via NTILE.
+-- Frequency = shopping days; monetary = merchandise sales dollars (USD).
+CREATE OR REPLACE TABLE household_rfm AS
 WITH base AS (
-    SELECT customer_id,
-           (SELECT rfm_as_of FROM params) - MAX(invoice_date) AS recency_days,
-           COUNT(DISTINCT invoice)                            AS frequency,
-           SUM(revenue)                                       AS monetary
-    FROM fct_invoices
-    WHERE invoice_date < (SELECT rfm_as_of FROM params)
-    GROUP BY customer_id
+    SELECT household_id,
+           (SELECT rfm_as_of FROM params) - MAX(visit_date)  AS recency_days,
+           COUNT(*)                                          AS frequency,
+           SUM(spend)                                        AS monetary
+    FROM fct_days
+    WHERE visit_date < (SELECT rfm_as_of FROM params)
+    GROUP BY household_id
 ),
 scored AS (
     SELECT *,
-           6 - NTILE(5) OVER (ORDER BY recency_days)       AS r_score,
-           NTILE(5) OVER (ORDER BY frequency, monetary)    AS f_score,
-           NTILE(5) OVER (ORDER BY monetary)               AS m_score
+           6 - NTILE(5) OVER (ORDER BY recency_days, household_id)  AS r_score,
+           NTILE(5) OVER (ORDER BY frequency, monetary, household_id) AS f_score,
+           NTILE(5) OVER (ORDER BY monetary, household_id)            AS m_score
     FROM base
 )
 SELECT *,

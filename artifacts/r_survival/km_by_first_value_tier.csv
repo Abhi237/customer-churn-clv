@@ -1,9 +1,0 @@
-strata,time,survival,n_risk
-first_value_tier=Q1 (lowest),90,0.12207285150302861,118
-first_value_tier=Q1 (lowest),365,0.0192924239374944,12
-first_value_tier=Q2,90,0.19646900354239724,198
-first_value_tier=Q2,365,0.042592330749198846,29
-first_value_tier=Q3,90,0.19210215254020022,189
-first_value_tier=Q3,365,0.031215958043010045,22
-first_value_tier=Q4 (highest),90,0.25774599475048093,253
-first_value_tier=Q4 (highest),365,0.07394177737644396,44

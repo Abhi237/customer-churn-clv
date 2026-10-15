@@ -1,44 +1,68 @@
-# Central parameters for the churn & CLV pipeline.
+# Central parameters for the household churn-proxy & CLV pipeline (Complete Journey grocery panel, 2017).
 paths:
-  raw_xlsx: data/raw/online_retail_II.xlsx
-  raw_zip: data/raw/online_retail_ii.zip
-  interim_parquet: data/interim/online_retail_ii.parquet
-  duckdb: data/processed/retail.duckdb
+  raw_dir: data/raw/completejourney
+  duckdb: data/processed/grocery.duckdb
+  processed: data/processed
   artifacts: artifacts
   figures: docs/figures
 
 data:
-  url: https://archive.ics.uci.edu/static/public/502/online+retail+ii.zip
-  non_product_codes: [POST, DOT, M, MANUAL, BANK CHARGES, C2, CRUK, D, PADS, ADJUST, ADJUST2, AMAZONFEE, S, B, TEST001, TEST002, GIFT, SP1002]
-  max_abs_quantity: 10000      # lines above this are treated as data-entry outliers
+  # Source: completejourney R package data (CC0), originally 84.51 Complete Journey 2.0.
+  source_base_url: https://raw.githubusercontent.com/bradleyboehmke/completejourney/{ref}/data
+  source_ref: v1.1.1
+  source_files: [campaign_descriptions.rda, campaigns.rda, coupon_redemptions.rda, coupons.rda,
+                 demographics.rda, products.rda, transactions.rds]
+  expected_transaction_rows: 1469307
+  # cleaning thresholds (counts for every rule are logged in dq_report / dq_cleaning_waterfall)
+  max_quantity: 1000           # quantity above this is not a unit count (fuel in milli-gallons etc.): units set to NULL
+  high_value_line_usd: 500     # lines above this are only FLAGGED (kept), they are real purchases
+  fresh_departments: [PRODUCE, MEAT, MEAT-PCKGD, SEAFOOD, SEAFOOD-PCKGD, DELI, PASTRY, SALAD BAR]
+  health_beauty_departments: [DRUG GM, COSMETICS, NUTRITION]
 
 churn:
   horizon_days: 90             # churn PROXY: no purchase in the 90 days after cutoff
-  lookback_active_days: 365    # population: customers with >=1 purchase in prior 365 days
-  train_cutoffs: ["2010-06-01", "2010-09-01", "2010-12-01", "2011-03-01"]
-  valid_cutoff: "2011-06-01"
-  test_cutoff: "2011-09-01"
+  lookback_active_days: 90     # population: households with >= 1 purchase in the 90 days before the cutoff
+  # Only 12 months of data: the last usable cutoff is data_end - 89 days = 2017-10-03 (label window must
+  # fit inside the data). Cutoffs are Sundays (retail week starts), spaced 14 days.
+  grid_cutoffs: ["2017-02-12", "2017-02-26", "2017-03-12", "2017-03-26", "2017-04-09", "2017-04-23",
+                 "2017-05-07", "2017-05-21", "2017-06-04", "2017-06-18", "2017-07-02", "2017-07-16",
+                 "2017-07-30", "2017-08-13", "2017-08-27", "2017-09-10", "2017-09-24"]
+  train_cutoffs: ["2017-02-12", "2017-02-26", "2017-03-12", "2017-03-26"]   # 90-day labels all close by 2017-06-24
+  valid_cutoff: "2017-07-02"   # model selection + calibration; label closes 2017-09-29
+  test_cutoff: "2017-10-01"    # final held-out cutoff; label window 2017-10-01..2017-12-29
+  backtest_eval_cutoffs: ["2017-06-18", "2017-07-16", "2017-08-13", "2017-09-10", "2017-10-01"]
+  bootstrap_reps: 1000
+  min_positives_isotonic: 1000   # isotonic only eligible as final calibrator with this many validation positives
   random_state: 42
 
 clv:
-  calibration_end: "2011-06-01"   # BG/NBD calibration/holdout validation split
-  observation_end: "2011-12-09"
-  horizon_months: 12
+  # Primary BG/NBD validation: 26 weeks calibration / 26 weeks holdout.
+  calibration_end: "2017-07-02"
+  observation_end: "2017-12-31"
+  # Secondary validation that mirrors the scoring set-up: calibrate to the test cutoff, 13-week holdout.
+  calibration_end_short: "2017-09-30"
+  horizon_months: 12           # extrapolation beyond the 12 observed months: only the holdout is validated
   discount_rate_monthly: 0.01
   penalizer: 0.001
 
+survival:
+  lapse_days: 90               # event: first inter-purchase gap longer than this
+  baseline_days: 28            # covariates measured in the first 28 days after first observed purchase (landmark)
+
 targeting:
   # ALL ASSUMED, NOT OBSERVED. Used only for scenario / sensitivity analysis.
-  contact_cost_gbp: 5.0
-  uplift: 0.10                 # assumed RELATIVE reduction in churn probability if contacted
-  gross_margin: 0.30
+  contact_cost_usd: 2.0        # ASSUMED cost of one personalised offer/mailer (incl. redeemed discount)
+  uplift: 0.10                 # ASSUMED relative reduction in churn probability if contacted
+  gross_margin: 0.25           # ASSUMED grocery gross margin on incremental sales
   sensitivity:
-    contact_cost_gbp: [1.0, 5.0, 10.0, 20.0]
+    contact_cost_usd: [0.5, 1.0, 2.0, 5.0, 10.0]
     uplift: [0.05, 0.10, 0.20, 0.30]
-    gross_margin: [0.20, 0.30, 0.40]
-  # risk tiers are relative (tertiles of calibrated churn probability) because absolute levels drift
-  # seasonally (see README: calibration-in-the-large at the test cutoff)
+    gross_margin: [0.15, 0.25, 0.35]
+  # risk tiers are relative (tertiles of calibrated churn probability); value tiers on predicted 12m CLV
   risk_quantiles: [0.0, 0.3333, 0.6667, 1.0]
   risk_labels: [Low risk, Medium risk, High risk]
   value_quantiles: [0.0, 0.5, 0.8, 1.0]
   value_labels: [Low value, Mid value, High value]
+
+demographics:
+  min_cell_size: 30            # cells with fewer scored households are shown but flagged as unreliable
