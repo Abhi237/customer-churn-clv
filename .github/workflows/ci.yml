@@ -18,5 +18,5 @@ jobs:
           pip install -e . --no-deps
       - name: Lint (ruff)
         run: ruff check .
-      - name: Tests (synthetic + edge-case fixtures; no raw data needed)
+      - name: Tests (synthetic Complete Journey fixture + edge cases; the raw 1.4M-row data is never downloaded)
         run: pytest -v

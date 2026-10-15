@@ -9,139 +9,164 @@ from pathlib import Path
 
 import markdown
 import pandas as pd
+import yaml
 
 ROOT = Path(__file__).resolve().parents[1]
 ART, DOCS = ROOT / "artifacts", ROOT / "docs"
 
 
 def load():
-    j = {n: json.loads((ART / f"{n}.json").read_text()) for n in
-         ["sql_summary", "train_summary", "clv_summary", "targeting_summary"]}
-    m = pd.read_csv(ART / "model_metrics.csv")
-    mat = pd.read_csv(ART / "targeting_matrix.csv")
-    sens = pd.read_csv(ART / "targeting_sensitivity.csv")
-    km = pd.read_csv(ART / "r_survival/km_overall.csv").set_index("time")
-    kmv = pd.read_csv(ART / "r_survival/km_by_first_value_tier.csv")
-    cox = pd.read_csv(ART / "r_survival/cox_stratified_hazard_ratios.csv").set_index("term")
-    return j, m, mat, sens, km, kmv, cox
+    names = ["sql_summary", "train_summary", "clv_summary", "targeting_summary", "campaign_summary",
+             "demographics_summary"]
+    j = {n: json.loads((ART / f"{n}.json").read_text()) for n in names}
+    tables = {
+        "metrics": pd.read_csv(ART / "model_metrics.csv"), "ci": pd.read_csv(ART / "test_metric_ci.csv"),
+        "bt": pd.read_csv(ART / "backtest_metrics.csv"), "mat": pd.read_csv(ART / "targeting_matrix.csv"),
+        "sens": pd.read_csv(ART / "targeting_sensitivity.csv"), "shap": pd.read_csv(ART / "shap_importance.csv"),
+        "km": pd.read_csv(ART / "r_survival/km_overall.csv").set_index("time"),
+        "kmt": pd.read_csv(ART / "r_survival/km_by_trip_tier.csv"),
+        "cox": pd.read_csv(ART / "r_survival/cox_stratified_hazard_ratios.csv").set_index("term"),
+        "cov": pd.read_csv(ART / "demographics_coverage.csv").set_index("group"),
+        "ct": pd.read_csv(ART / "campaign_type_summary.csv").set_index("campaign_type"),
+    }
+    return j, tables, yaml.safe_load((ROOT / "config/config.yaml").read_text())
 
 
-def gbp(x):
-    return f"GBP {x / 1e6:,.2f}m" if abs(x) >= 1e6 else f"GBP {x / 1e3:,.0f}k" if abs(x) >= 1e4 else f"GBP {x:,.0f}"
+def usd(x):
+    sign = "-" if x < 0 else ""
+    a = abs(x)
+    return sign + (f"${a / 1e6:,.2f}M" if a >= 1e6 else f"${a / 1e3:,.0f}K" if a >= 1e4 else f"${a:,.0f}")
 
 
 def build() -> str:
-    j, m, mat, sens, km, kmv, cox = load()
-    s, t, c, g = j["sql_summary"], j["train_summary"], j["clv_summary"], j["targeting_summary"]
-    test = m[(m.split == "test")].set_index(["model", "calibration"])
-    lr, rec, rfm = test.loc[("Logistic regression", "none")], test.loc[("Recency rule", "none")], \
-        test.loc[("RFM heuristic", "none")]
-    final = t["final_model"]
-    fm = test.loc[tuple(final.split(" + "))] if " + " in final else lr
-    cil = t["calibration_in_the_large_test"][final]
-    hv_lr = mat[(mat.value_segment == "High value") & (mat.risk_segment == "Low risk")].iloc[0]
-    mid_med = mat[(mat.value_segment == "Mid value") & (mat.risk_segment == "Medium risk")].iloc[0]
-    mid_risk = mat[(mat.value_segment == "Mid value") & (mat.risk_segment != "Low risk")]
+    j, t, cfg = load()
+    s, tr, cl, tg = j["sql_summary"], j["train_summary"], j["clv_summary"], j["targeting_summary"]
+    cs, ds = j["campaign_summary"], j["demographics_summary"]
+    ch = cfg["churn"]
+    m = t["metrics"][t["metrics"].split == "test"].set_index(["model", "calibration"])
+    ci = t["ci"].set_index("model")
+    final = tr["final_model"]
+    base, _, cal = final.partition(" + ")
+    fm = m.loc[(base, cal or "none")]
+    lr, lg, rfm, rec = (m.loc[(k, "none")] for k in ("Logistic regression", "LightGBM", "RFM heuristic",
+                                                      "Recency rule"))
+    pb = tr["paired_bootstrap_test"]
+    p_ll, p_lr = pb["lightgbm_minus_logreg_roc_auc"], pb["logreg_minus_rfm_roc_auc"]
+    bt = t["bt"].pivot(index="eval_cutoff", columns="model", values="roc_auc")
+    wins = int((bt["LightGBM"] >= bt["Logistic regression"]).sum())
+    cil = tr["calibration_in_the_large_test"]
+    calib = tr["calibration"]["LightGBM"]
+    mat = t["mat"]
+    hv = mat[(mat.value_segment == "High value") & (mat.risk_segment == "Low risk")].iloc[0]
     hv_risk = mat[(mat.value_segment == "High value") & (mat.risk_segment != "Low risk")]
-    b = g["base_case_ASSUMED"]
-    q1 = kmv[(kmv.time == 90) & kmv.strata.str.contains("Q1")].survival.iloc[0]
-    q4 = kmv[(kmv.time == 90) & kmv.strata.str.contains("Q4")].survival.iloc[0]
-    hr = cox.loc["log_first_value"]
-    cons = sens[(sens.uplift == 0.05) & (sens.gross_margin == 0.3) & (sens.contact_cost_gbp == 10)].iloc[0]
-    tot_obs_rev = mat.observed_revenue_90d.sum()
+    lv_hr = mat[(mat.value_segment == "Low value") & (mat.risk_segment == "High risk")].iloc[0]
+    b = tg["base_case_ASSUMED"]
+    sens = t["sens"]
+    km = t["km"]
+    kmt = t["kmt"][t["kmt"].time == 90].set_index("strata")["survival"]
+    hr = t["cox"].loc["log_trips"]
+    cov = t["cov"]
+    top = ", ".join(t["shap"].head(4)["feature"].str.replace("_", " "))
+    adj = cs["adjusted_difference_targeted"]
+    ct = t["ct"]
 
-    md = f"""# Retention Strategy Memo - Online Retail II
+    return f"""# Retention Strategy Memo - US Grocery Loyalty Panel
 
-**To:** Commercial leadership | **From:** Customer Analytics | **Scoring date:** {g_date(t)} (back-test)
-**Basis:** UCI Online Retail II, {s['date_min']} to {s['date_max']}; every figure below is computed by the
-pipeline in this repository. Items marked **ASSUMED** are scenario inputs, not observed results.
+**To:** Commercial leadership | **From:** Customer Analytics | **Scoring date:** {ch['test_cutoff']} (back-test)
+**Basis:** Complete Journey 2.0 (84.51, CC0), {s['n_households']:,} loyalty-card households, {s['date_min']} to
+{s['date_max']}. Every figure is computed by the pipeline in this repository. Items marked **ASSUMED** are
+scenario inputs, not observed results. **Churn is a proxy**: no purchase in the {ch['horizon_days']} days after the
+cutoff, not an observed cancellation.
 
 ## 1. The decision
-Which active customers should receive retention spend in the next quarter, and how much is their future
-purchasing plausibly worth?
+Which active households should receive retention spend (coupons, outreach) next quarter, and how much is their
+future spend plausibly worth?
 
 ## 2. What the data says (observed)
-* **{s['n_customers_clean']:,} identifiable customers** placed {s['n_invoices_clean']:,} clean invoices worth
-  {gbp(s['revenue_clean_gbp'])}. {s['one_time_buyer_share']:.0%} bought only once.
-* **Activation is the biggest leak.** Only {km.loc[1, 'survival']:.0%} of new customers made a repeat purchase
-  within 90 days of their first order; {km.loc[365, 'survival']:.1%} were still active without any 90-day lapse
-  after a year (Kaplan-Meier). Customers whose first order was in the top value quartile stayed active at
-  90 days at {q4:.0%} vs {q1:.0%} for the bottom quartile; each 1-unit increase in log first-order value cuts the
-  lapse hazard by {1 - hr.hr:.0%} (stratified Cox HR {hr.hr:.2f}, 95% CI {hr.lower95:.2f}-{hr.upper95:.2f}).
-* **Churn proxy** (no purchase in the 90 days after the scoring date - a behavioural proxy, not a cancellation):
-  {t['churn_rate']['test']:.1%} of the {t['n_test']:,} customers active in the prior year at {g_date(t)}.
+* {s['n_households']:,} households made {s['n_baskets_clean']:,} clean baskets worth {usd(s['spend_clean_usd'])} across
+  {s['n_stores']} stores. The top 10% of households account for {s['top10pct_spend_share']:.0%} of spend.
+* Store discounts are {s['retail_disc_share_of_shelf']:.1%} of shelf value and coupon discounts only
+  {s['coupon_disc_share_of_shelf']:.2%}; {s['baskets_with_coupon_share']:.1%} of baskets use a coupon.
+* Households rarely go quiet: {km.loc[90, 'survival']:.1%} remain lapse-free at day 90 (Kaplan-Meier, landmark
+  design). Baseline trip frequency separates them sharply: day-90 survival is {kmt['Low (T1)']:.1%} for the lowest
+  trip tier and {kmt['High (T3)']:.1%} for the highest (Cox hazard ratio per log trip {hr['hr']:.2f}, 95% CI
+  {hr['lower95']:.2f} to {hr['upper95']:.2f}; the proportional-hazards test flags this effect as time-varying).
 
-![](figures/km_overall.png) ![](figures/roc_pr_test.png)
+## 3. Churn-proxy model (out-of-time test, {tr['n_test']:,} households, {tr['n_test_positives']} positives)
+* Prevalence is {tr['churn_rate']['test']:.1%} (train {tr['churn_rate']['train']:.1%}, validation
+  {tr['churn_rate']['valid']:.1%}).
+* Test ROC-AUC with 95% bootstrap intervals: recency rule {rec.roc_auc:.3f} ({ci.loc['Recency rule', 'roc_auc_lo']:.3f} to
+  {ci.loc['Recency rule', 'roc_auc_hi']:.3f}), RFM heuristic {rfm.roc_auc:.3f}, logistic regression {lr.roc_auc:.3f}
+  ({ci.loc['Logistic regression', 'roc_auc_lo']:.3f} to {ci.loc['Logistic regression', 'roc_auc_hi']:.3f}), LightGBM
+  {lg.roc_auc:.3f} ({ci.loc['LightGBM', 'roc_auc_lo']:.3f} to {ci.loc['LightGBM', 'roc_auc_hi']:.3f}).
+  PR-AUC: {rec.pr_auc:.3f}, {rfm.pr_auc:.3f}, {lr.pr_auc:.3f}, {lg.pr_auc:.3f} against a {tr['churn_rate']['test']:.3f} base rate.
+* **LightGBM is not distinguishable from logistic regression**: paired-bootstrap ROC-AUC difference {p_ll['diff']:+.3f}
+  ({p_ll['lo']:+.3f} to {p_ll['hi']:+.3f}). Logistic regression beats the RFM heuristic by {p_lr['diff']:+.3f}
+  ({p_lr['lo']:+.3f} to {p_lr['hi']:+.3f}). In the rolling backtest LightGBM matches or beats logistic regression at
+  {wins} of {len(bt)} cutoffs.
+* Final model: {final} (best validation PR-AUC); top-decile lift {fm.lift_top10:.2f}x. **Calibration did not improve
+  Brier on test**: raw LightGBM {lg.brier:.4f}, final {fm.brier:.4f}. Mean predicted risk is
+  {cil['LightGBM']['mean_pred']:.1%} raw and {cil[final]['mean_pred']:.1%} after Platt scaling versus
+  {cil['LightGBM']['observed']:.1%} observed; calibration slope {fm.calib_slope:.2f}. Isotonic was ineligible with
+  {calib['valid_positives']} validation positives. Use scores for ranking.
+* Main drivers (mean |SHAP|): {top}.
 
-## 3. How well can we predict it (out-of-time test, {g_date(t)})
-| Approach | ROC-AUC | PR-AUC | Lift, top 10% |
-|---|---|---|---|
-| Recency rule (baseline) | {rec.roc_auc:.3f} | {rec.pr_auc:.3f} | {rec.lift_top10:.2f}x |
-| RFM heuristic (baseline) | {rfm.roc_auc:.3f} | {rfm.pr_auc:.3f} | {rfm.lift_top10:.2f}x |
-| **{final}** (selected on validation) | **{fm.roc_auc:.3f}** | **{fm.pr_auc:.3f}** | **{fm.lift_top10:.2f}x** |
+## 4. Lifetime value (BG/NBD + Gamma-Gamma, {cl['holdout_days']:.0f}-day holdout)
+Predicted holdout shopping days are {cl['pred_purchases_total']:,.0f} versus {cl['actual_purchases_total']:,.0f} actual
+({cl['pred_purchases_total'] / cl['actual_purchases_total'] - 1:+.1%}); spend {usd(cl['pred_spend_total'])} versus
+{usd(cl['actual_spend_total'])} ({cl['pred_spend_total'] / cl['actual_spend_total'] - 1:+.1%}). Household-level MAE is
+{cl['purchases_mae']:.2f} shopping days against {cl['naive_rate_mae']:.2f} for a naive carried-forward rate: the model is
+right in aggregate and for ranking (Spearman {cl['spend_spearman']:.2f}), but only slightly better per household.
 
-The model ranks risk better than the baselines, but the gain over a simple RFM score is modest
-({fm.roc_auc - rfm.roc_auc:+.3f} ROC-AUC). **Calibration caveat:** at this pre-Christmas scoring date the model
-predicted an average churn risk of {cil['mean_pred']:.0%} versus {cil['observed']:.0%} observed, consistent with
-seasonal Q4 demand lowering churn (training windows mix seasons). Use the scores to *rank* customers; re-calibrate on the latest season before using
-them as absolute probabilities.
+## 5. Coupons and campaigns (observational, no causal claim)
+* {s['n_campaigns']} campaigns reached {s['n_households_targeted_any']:,} households; {s['n_households_ever_redeemed']:,}
+  redeemed at least one coupon. Type A campaigns reach about {ct.loc['Type A', 'median_targeted']:,.0f} households each
+  and have a {ct.loc['Type A', 'redeeming_per_targeted']:.1%} redeeming share of targeted, versus
+  {ct.loc['Type B', 'redeeming_per_targeted']:.1%} for Type B.
+* Households targeted in the test window churn less (naive gap {adj['naive_diff'] * 100:+.1f} points), but within
+  model risk tiers the gap is {adj['tier_standardised_diff'] * 100:+.1f} points: targeting reached heavier shoppers
+  (largest baseline standardised difference {cs['max_abs_smd_targeted']:.2f}). There is no holdout, so the data
+  cannot say whether campaigns work.
 
-**Value forecast (BG/NBD + Gamma-Gamma):** on a {c['holdout_days']:.0f}-day holdout the model predicted
-{c['pred_purchases_total']:,.0f} repeat purchases vs {c['actual_purchases_total']:,.0f} actual and
-{gbp(c['pred_spend_total'])} spend vs {gbp(c['actual_spend_total'])} actual (spend under-forecast by
-{1 - c['pred_spend_total'] / c['actual_spend_total']:.0%}; the holdout contains the Q4 peak and the model has no
-seasonality). The top 10% of customers by
-predicted value delivered {c['top10_share_of_actual_spend']:.0%} of actual holdout spend.
+## 6. Value x risk targeting (ASSUMED ROI)
+* {int(hv.households):,} High value / Low risk households hold {hv.total_clv_12m / mat.total_clv_12m.sum():.0%} of predicted
+  CLV (observed churn {hv.observed_churn_rate:.1%}): protect with service, not discounts. Only
+  {int(hv_risk.households.sum())} households are both high value and at elevated risk.
+* Most risk sits in Low value households ({int(lv_hr.households):,} High risk, observed churn
+  {lv_hr.observed_churn_rate:.1%}).
+* **ASSUMED** {tg['base_case_ASSUMED']['uplift']:.0%} relative churn reduction, {b['gross_margin']:.0%} margin,
+  ${b['contact_cost_usd']:.2f} per contact: the rule targets {b['n_targeted']} households
+  ({b['share_targeted']:.1%}) for expected net value {usd(b['expected_net_value_usd'])} on
+  {usd(b['campaign_cost_usd'])} of cost; contacting everyone would be {usd(b['expected_net_value_target_all_usd'])}.
+  Across the ASSUMED sensitivity grid net value ranges from {usd(sens.expected_net_value_usd.min())} to
+  {usd(sens.expected_net_value_usd.max())}. These are scenarios, not forecasts.
 
-## 4. Value x risk segments at {g_date(t)}
-* **Protect - High value / Low risk:** {int(hv_lr.customers):,} customers, {gbp(hv_lr.total_clv_12m)} predicted 12-month
-  CLV ({hv_lr.total_clv_12m / mat.total_clv_12m.sum():.0%} of the total). Observed next-90-day churn was only
-  {hv_lr.observed_churn_rate:.0%} and they generated {hv_lr.observed_revenue_90d / tot_obs_rev:.0%} of next-quarter revenue.
-  Service, not discounts.
-* **Save - High value at Medium/High risk:** {int(hv_risk.customers.sum()):,} customers, {gbp(hv_risk.total_clv_12m.sum())}
-  CLV; observed churn {(hv_risk.observed_churn_rate * hv_risk.customers).sum() / hv_risk.customers.sum():.0%}.
-  Highest priority for personal outreach.
-* **Grow - Mid value at Medium/High risk:** {int(mid_risk.customers.sum()):,} customers, {gbp(mid_risk.total_clv_12m.sum())}
-  CLV (Mid/Medium alone: {int(mid_med.customers):,}). Low-cost automated win-back.
-* **Low value / High risk:** {int(mat.iloc[2].customers):,} customers, mean CLV {gbp(mat.iloc[2].mean_clv_12m)}:
-  email-only or no spend.
+## 7. Demographics (partial coverage)
+Only {ds['n_with_demographics']} of {ds['n_households']:,} households ({ds['coverage_share']:.0%}) have demographics. They are
+heavier shoppers (median spend to date {usd(cov.loc['With demographics', 'median_monetary_total'])} versus
+{usd(cov.loc['Without demographics', 'median_monetary_total'])}) and only {ds['n_churned_with_demographics']} of
+{ds['n_scored_with_demographics']} scored covered households went quiet, so group churn rates are not informative.
 
-![](figures/targeting_matrix.png)
+## 8. Recommendation and next step
+Protect high-value households with service; do not spend discounts where risk is low. Before any ROI claim, run a
+randomised holdout campaign stratified by risk and value tier and replace the ASSUMED uplift with a measured one.
 
-## 5. Recommended targeting rule (scenario - ASSUMED inputs)
-Contact a customer when *P(churn) x uplift x CLV(12m) x margin > contact cost*.
-With **ASSUMED** {b['uplift']:.0%} relative churn reduction, {b['gross_margin']:.0%} margin and GBP {b['contact_cost_gbp']:.0f}
-per contact, the rule selects {b['n_targeted']:,} customers ({b['share_targeted']:.0%}), costing
-{gbp(b['campaign_cost_gbp'])} with an expected net value of {gbp(b['expected_net_value_gbp'])}. Under a conservative
-scenario ({cons.uplift:.0%} uplift, GBP {cons.contact_cost_gbp:.0f} contact) it selects {int(cons.n_targeted):,}
-customers for {gbp(cons.expected_net_value_gbp)}. Across the {len(sens)}-scenario grid the expected net value ranges
-from {gbp(g['sensitivity_range_net_value_gbp'][0])} to {gbp(g['sensitivity_range_net_value_gbp'][1])}. **These are not
-observed impacts**; the probabilities feeding them are over-stated at this date (section 3).
+## 9. Limitations
+One calendar year, one retailer, {s['n_households']:,} loyalty-card households (card-less purchases are invisible);
+about {tr['n_test_positives']} churn-proxy events per cutoff so model differences are within noise; the label is a
+proxy; partial demographics; BG/NBD has no seasonality and 12-month CLV extrapolates beyond one observed year;
+this extract contains no returns.
 
-## 6. Next steps
-1. Run a randomised hold-out test (e.g. 20% control) in the Save and Grow cells to *measure* uplift; replace the
-   assumption with the measured value.
-2. Launch a second-order activation programme for new customers (the day-1 lapse is the largest loss).
-3. Re-score monthly with `churn score --cutoff <date>` and re-calibrate on the most recent comparable season.
-
-*Limitations: wholesale-heavy, {s['uk_customer_share']:.0%} UK customer base; 2 years of history (one Q4 per
-split); {s['dq_report']['missing_customer_id']:,} raw lines lacked a customer ID and are excluded; churn is a proxy.*
+![Value x risk matrix](figures/targeting_matrix.png) ![Campaign outcomes](figures/campaign_outcomes.png)
 """
-    return md
-
-
-def g_date(t):
-    import yaml
-
-    return yaml.safe_load((ROOT / "config/config.yaml").read_text())["churn"]["test_cutoff"]
 
 
 CSS = """
-@page { size: A4; margin: 14mm 15mm; }
-body { font-family: 'DejaVu Sans', Arial, sans-serif; font-size: 8.6pt; line-height: 1.32; color: #1a1a1a; }
-h1 { font-size: 14pt; color: #1f4e79; margin: 0 0 4px 0; border-bottom: 2px solid #1f4e79; }
-h2 { font-size: 10pt; color: #1f4e79; margin: 8px 0 3px 0; }
-ul { margin: 2px 0 2px 16px; padding: 0; } li { margin-bottom: 2px; } p { margin: 3px 0; }
+@page { size: A4; margin: 12mm 14mm; }
+body { font-family: 'DejaVu Sans', Arial, sans-serif; font-size: 7.9pt; line-height: 1.28; color: #1a1a1a; }
+h1 { font-size: 13pt; color: #1f4e79; margin: 0 0 4px 0; border-bottom: 2px solid #1f4e79; }
+h2 { font-size: 9.2pt; color: #1f4e79; margin: 6px 0 2px 0; }
+ul { margin: 2px 0 2px 14px; padding: 0; } li { margin-bottom: 1.5px; } p { margin: 2px 0; }
 table { border-collapse: collapse; margin: 4px 0; } th, td { border: 1px solid #bbb; padding: 2px 7px; }
 th { background: #e8eef5; }
 img { width: 49%; } p:has(img) { text-align: center; }
@@ -151,7 +176,8 @@ img { width: 49%; } p:has(img) { text-align: center; }
 def main():
     md = build()
     (DOCS / "retention_memo.md").write_text(md)
-    html = f"<html><head><style>{CSS}</style></head><body>{markdown.markdown(md, extensions=['tables', 'attr_list'])}</body></html>"
+    body = markdown.markdown(md, extensions=["tables", "attr_list"])
+    html = f"<html><head><style>{CSS}</style></head><body>{body}</body></html>"
     from weasyprint import HTML
 
     doc = HTML(string=html, base_url=str(DOCS)).render()

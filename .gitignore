@@ -22,3 +22,4 @@ renv/library/
 reports/*_files/
 reports/.quarto/
 .DS_Store
+artifacts/household_scores_*.csv

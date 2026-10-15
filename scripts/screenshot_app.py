@@ -8,7 +8,8 @@ BASE = sys.argv[1] if len(sys.argv) > 1 else "http://localhost:8501"
 OUT = Path(__file__).resolve().parents[1] / "docs" / "app_screenshots"
 PAGES = [("01_overview", ""), ("02_data_cleaning", "data_cleaning"), ("03_cohorts", "cohorts"),
          ("04_churn_model", "churn_model"), ("05_clv", "clv"), ("06_survival", "survival"),
-         ("07_targeting", "targeting"), ("08_methodology", "methodology")]
+         ("07_campaigns", "campaigns"), ("08_demographics", "demographics"), ("09_targeting", "targeting"),
+         ("10_methodology", "methodology")]
 
 OUT.mkdir(parents=True, exist_ok=True)
 with sync_playwright() as p:

@@ -4,13 +4,13 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "churn-clv"
-version = "1.0.0"
-description = "Customer lifecycle, churn-proxy and CLV modelling on UCI Online Retail II"
+version = "2.0.0"
+description = "Household churn-proxy, CLV and campaign analytics on the Complete Journey US grocery loyalty data"
 readme = "README.md"
 requires-python = ">=3.10,<3.13"
 license = { text = "MIT" }
 dependencies = [
-  "duckdb", "pandas", "pyarrow", "openpyxl", "numpy", "scikit-learn", "lightgbm", "shap",
+  "duckdb", "pandas", "pyarrow", "numpy", "scikit-learn", "lightgbm", "shap",
   "lifetimes", "matplotlib", "pyyaml", "click", "joblib", "scipy",
 ]
 
@@ -44,3 +44,4 @@ addopts = "-q"
 "scripts/build_memo.py" = ["E501"]   # memo template text
 "scripts/make_notebooks.py" = ["E501"]  # notebook cell sources
 "app/views/*.py" = ["E501"]  # long f-string narrative text
+"tests/*.py" = ["E501"]
