@@ -75,3 +75,18 @@ def test_app_text_has_no_emoji_and_no_gbp():
         text = f.read_text()
         assert "\u00a3" not in text, f
         assert not any(0x1F300 <= ord(ch) <= 0x1FAFF or 0x2600 <= ord(ch) <= 0x27BF for ch in text), f
+
+
+FULL_TITLE = ("Grocery Household Churn & CLV - Using calibrated gradient boosting and BG/NBD models to forecast "
+              "household churn and lifetime value on a US grocery loyalty panel")
+
+
+def test_project_title_is_prefixed_and_consistent():
+    import sys
+    sys.path.insert(0, str(APP.parent))
+    import core
+    assert core.TITLE == FULL_TITLE
+    assert (ROOT / "README.md").read_text().splitlines()[0] == f"# {FULL_TITLE}"
+    at = AppTest.from_file(str(APP), default_timeout=120).run()
+    assert not at.exception
+    assert any(core.TITLE_PREFIX in m.value and core.TITLE_METHOD in m.value for m in at.markdown)

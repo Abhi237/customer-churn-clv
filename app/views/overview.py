@@ -2,7 +2,8 @@ import plotly.express as px
 import streamlit as st
 from core import (
     RISK_ORDER,
-    TITLE,
+    TITLE_METHOD,
+    TITLE_PREFIX,
     VALUE_ORDER,
     callout,
     csv,
@@ -17,7 +18,7 @@ from core import (
 s = summary()
 sq, tr, cl, tg = s["sql_summary"], s["train_summary"], s["clv_summary"], s["targeting_summary"]
 setup_page("Which households deserve retention spend, and what are they worth?",
-           f"{TITLE}. Out-of-time back-test at the {s['config']['churn']['test_cutoff']} scoring date; "
+           f"<b>{TITLE_PREFIX}</b> - {TITLE_METHOD}. Out-of-time back-test at the {s['config']['churn']['test_cutoff']} scoring date; "
            "every number is computed by the pipeline.")
 
 callout("<b>Business question.</b> A US grocery chain has a loyalty card but no subscriptions: households never "

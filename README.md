@@ -1,4 +1,4 @@
-# Using calibrated gradient boosting and BG/NBD models to forecast household churn and lifetime value on a US grocery loyalty panel
+# Grocery Household Churn & CLV - Using calibrated gradient boosting and BG/NBD models to forecast household churn and lifetime value on a US grocery loyalty panel
 
 > **Outcome:** a reproducible pipeline that ranks 2,314 active grocery households by 90-day churn-proxy risk
 > (out-of-time ROC-AUC 0.843, top-decile lift 4.03x, with only 89 test positives so intervals are wide) and by

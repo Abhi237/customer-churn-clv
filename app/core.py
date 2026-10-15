@@ -17,8 +17,10 @@ DOCS = Path(__file__).resolve().parents[1] / "docs"
 REPO_URL = "https://github.com/Abhi237/customer-churn-clv"
 MEMO_URL = f"{REPO_URL}/blob/main/docs/retention_memo.pdf"
 DATA_SOURCE = "https://github.com/bradleyboehmke/completejourney"
-TITLE = ("Using calibrated gradient boosting and BG/NBD models to forecast household churn and lifetime value "
-         "on a US grocery loyalty panel")
+TITLE_PREFIX = "Grocery Household Churn & CLV"
+TITLE_METHOD = ("Using calibrated gradient boosting and BG/NBD models to forecast household churn and lifetime value "
+                "on a US grocery loyalty panel")
+TITLE = f"{TITLE_PREFIX} - {TITLE_METHOD}"
 
 NAVY, RED, GREEN, PURPLE, ORANGE, TEAL, GREY = ("#1f4e79", "#c0504d", "#5b9a3c", "#8064a2", "#e8892b",
                                                 "#2e9bb5", "#7f8c99")
