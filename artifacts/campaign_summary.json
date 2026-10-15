@@ -1,0 +1,29 @@
+{
+  "n_scored": 2314,
+  "targeted_in_window_n": 1237,
+  "type_a_in_window_n": 1131,
+  "prior_redeemer_n": 315,
+  "targeted_before_cutoff_n": 1389,
+  "adjusted_difference_targeted": {
+    "flag": "targeted_in_window",
+    "naive_diff": -0.05137252870897257,
+    "tier_standardised_diff": -0.0014392674153666902
+  },
+  "adjusted_difference_type_a": {
+    "flag": "type_a_in_window",
+    "naive_diff": -0.0441017868073571,
+    "tier_standardised_diff": 0.005675510791268746
+  },
+  "adjusted_difference_prior_redeemer": {
+    "flag": "prior_redeemer",
+    "naive_diff": -0.040847407830899574,
+    "tier_standardised_diff": -0.03805776340799716
+  },
+  "max_abs_smd_targeted": 1.4194822015347035,
+  "max_abs_smd_prior_redeemer": 1.1894998491013196,
+  "campaign_window": {
+    "start": "2017-10-01",
+    "horizon_days": 90
+  },
+  "caveat": "Observational association. Targeting was not randomised and there is no holdout group."
+}

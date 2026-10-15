@@ -1,0 +1,43 @@
+households analysed: 2278; lapse events: 297 (13.0%); max follow-up 247 days
+trip tiers (T1/T2/T3) sizes: 995/668/615; trips per tier max: 3/6/27
+KM S(t) at day 30: 0.974
+KM S(t) at day 60: 0.955
+KM S(t) at day 90: 0.934
+KM S(t) at day 120: 0.919
+KM S(t) at day 180: 0.889
+KM S(t) at day 240: 0.867
+KM median time to lapse: not reached
+log-rank trip_tier: chisq=187.7 df=2 p=1.71e-41
+log-rank basket_tier: chisq=36.9 df=3 p=4.9e-08
+log-rank coupon_user: chisq=38.8 df=1 p=4.59e-10
+log-rank entry_group: chisq=130.2 df=2 p=5.34e-29
+Cox concordance: 0.775 (se 0.012); n=2278 events=297
+HR log_trips = 0.253 [0.190, 0.337] p=6.29e-21
+HR log_basket = 0.802 [0.710, 0.906] p=0.000378
+HR fresh_10pts = 0.945 [0.895, 0.997] p=0.0389
+HR coupon_userUsed coupons = 0.563 [0.355, 0.893] p=0.0146
+HR store_pattern2+ stores = 0.924 [0.690, 1.236] p=0.594
+HR entry_groupFeb-Mar 2017 = 1.723 [1.290, 2.303] p=0.000233
+HR entry_groupApr-Sep 2017 = 2.710 [1.764, 4.162] p=5.27e-06
+cox.zph log_trips: chisq=7.0 p=0.00806
+cox.zph log_basket: chisq=0.4 p=0.505
+cox.zph fresh_10pts: chisq=0.4 p=0.515
+cox.zph coupon_user: chisq=0.0 p=0.989
+cox.zph store_pattern: chisq=1.1 p=0.299
+cox.zph entry_group: chisq=8.4 p=0.0153
+cox.zph GLOBAL: chisq=19.0 p=0.0083
+Stratified Cox (strata = entry group):
+  HR log_trips = 0.253 [0.190, 0.337] p=5.71e-21
+  HR log_basket = 0.802 [0.710, 0.906] p=0.000398
+  HR fresh_10pts = 0.944 [0.894, 0.996] p=0.0347
+  HR coupon_userUsed coupons = 0.567 [0.358, 0.899] p=0.0159
+  HR store_pattern2+ stores = 0.923 [0.690, 1.235] p=0.589
+  cox.zph log_trips: p=0.00354
+  cox.zph log_basket: p=0.578
+  cox.zph fresh_10pts: p=0.59
+  cox.zph coupon_user: p=0.936
+  cox.zph store_pattern: p=0.249
+  cox.zph GLOBAL: p=0.0677
+  concordance 0.753
+Sensitivity (Jan-2017 entrants only, n=1918, events=203): HR log_trips = 0.232 (main stratified: 0.253)
+Demographics subset: n=798 households with income and age, events=8 (of 2278 analysed)

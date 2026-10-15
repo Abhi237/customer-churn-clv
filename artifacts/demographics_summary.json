@@ -1,0 +1,13 @@
+{
+  "n_households": 2469,
+  "n_with_demographics": 801,
+  "coverage_share": 0.3244228432563791,
+  "n_scored_with_demographics": 801,
+  "n_scored": 2314,
+  "n_churned_with_demographics": 2,
+  "unreliable_cells": 14,
+  "cells": 14,
+  "churn_rate_with_demographics": 0.0024968789013732834,
+  "churn_rate_without_demographics": 0.05750165234633179,
+  "caveat": "Partial coverage; covered households are not guaranteed representative; cells are small; too few churn-proxy events among covered households for group churn rates to be informative."
+}

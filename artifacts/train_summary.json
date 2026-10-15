@@ -1,0 +1,320 @@
+{
+  "n_train_rows": 8704,
+  "n_valid": 2297,
+  "n_test": 2314,
+  "n_train_positives": 289,
+  "n_valid_positives": 100,
+  "n_test_positives": 89,
+  "churn_rate": {
+    "train": 0.033203125,
+    "valid": 0.043535045711798,
+    "test": 0.038461538461538464
+  },
+  "churn_rate_by_train_cutoff": {
+    "2017-02-12": 0.028392685274302214,
+    "2017-02-26": 0.028864059590316574,
+    "2017-03-12": 0.03606853020739405,
+    "2017-03-26": 0.03893805309734513
+  },
+  "n_by_train_cutoff": {
+    "2017-02-12": 2078,
+    "2017-02-26": 2148,
+    "2017-03-12": 2218,
+    "2017-03-26": 2260
+  },
+  "calibration": {
+    "Logistic regression": {
+      "cv_brier_on_valid": {
+        "isotonic": 0.03700790392322086,
+        "platt": 0.036877009699900695,
+        "none": 0.03733665900833972
+      },
+      "isotonic_eligible": false,
+      "valid_positives": 100,
+      "chosen": "platt"
+    },
+    "LightGBM": {
+      "cv_brier_on_valid": {
+        "isotonic": 0.03574091198676714,
+        "platt": 0.0359592696595971,
+        "none": 0.0364564673172093
+      },
+      "isotonic_eligible": false,
+      "valid_positives": 100,
+      "chosen": "platt"
+    }
+  },
+  "final_model": "LightGBM + platt",
+  "lgbm_params": {
+    "num_leaves": 4,
+    "min_child_samples": 100,
+    "n_estimators": 200,
+    "learning_rate": 0.02
+  },
+  "calibration_in_the_large_test": {
+    "Recency rule": {
+      "mean_pred": 0.03923280329366372,
+      "observed": 0.038461538461538464
+    },
+    "RFM heuristic": {
+      "mean_pred": 0.03574692065024716,
+      "observed": 0.038461538461538464
+    },
+    "Logistic regression": {
+      "mean_pred": 0.02973762201243272,
+      "observed": 0.038461538461538464
+    },
+    "Logistic regression + isotonic": {
+      "mean_pred": 0.04495101606630074,
+      "observed": 0.038461538461538464
+    },
+    "Logistic regression + platt": {
+      "mean_pred": 0.044411987955056846,
+      "observed": 0.038461538461538464
+    },
+    "LightGBM": {
+      "mean_pred": 0.03083869463771769,
+      "observed": 0.038461538461538464
+    },
+    "LightGBM + isotonic": {
+      "mean_pred": 0.04407496698345409,
+      "observed": 0.038461538461538464
+    },
+    "LightGBM + platt": {
+      "mean_pred": 0.04364779750676693,
+      "observed": 0.038461538461538464
+    }
+  },
+  "paired_bootstrap_test": {
+    "lightgbm_minus_logreg_roc_auc": {
+      "diff": 0.0024214114379497165,
+      "lo": -0.01241811934814221,
+      "hi": 0.017044759570847876,
+      "share_a_better": 0.635
+    },
+    "lightgbm_minus_logreg_pr_auc": {
+      "diff": 0.008605526377087308,
+      "lo": -0.012084351175599936,
+      "hi": 0.039879075634783163,
+      "share_a_better": 0.781
+    },
+    "logreg_minus_rfm_roc_auc": {
+      "diff": 0.034346673399823224,
+      "lo": 0.015461793730261703,
+      "hi": 0.05462730736220814,
+      "share_a_better": 1.0
+    },
+    "logreg_minus_rfm_pr_auc": {
+      "diff": 0.028766329451706513,
+      "lo": 0.0070357122432720175,
+      "hi": 0.06603492272582831,
+      "share_a_better": 0.999
+    }
+  },
+  "test_metrics": [
+    {
+      "model": "Recency rule",
+      "calibration": "none",
+      "roc_auc": 0.7928165635652065,
+      "pr_auc": 0.14414003258659208,
+      "brier": 0.034180814161979454,
+      "log_loss": 0.1382132344523387,
+      "ece": 0.0007712648321252616,
+      "calib_slope": 0.9367884880767897,
+      "calib_intercept": -0.18299778173769624,
+      "mean_pred": 0.03923280329366372,
+      "lift_top10": 4.818965517241379,
+      "lift_top20": 3.257019438444924,
+      "gain_top20": 0.651685393258427,
+      "gain_top30": 0.7528089887640449,
+      "base_rate": 0.038461538461538464
+    },
+    {
+      "model": "RFM heuristic",
+      "calibration": "none",
+      "roc_auc": 0.8063805075116779,
+      "pr_auc": 0.1234383807699827,
+      "brier": 0.034724184860795745,
+      "log_loss": 0.14493471866792057,
+      "ece": 0.0027144453825963992,
+      "calib_slope": 0.6573729892833341,
+      "calib_intercept": -0.828420742191726,
+      "mean_pred": 0.03574709307894206,
+      "lift_top10": 4.0344827586206895,
+      "lift_top20": 2.9762419006479477,
+      "gain_top20": 0.5955056179775281,
+      "gain_top30": 0.7865168539325843,
+      "base_rate": 0.038461538461538464
+    },
+    {
+      "model": "Logistic regression",
+      "calibration": "none",
+      "roc_auc": 0.8407271809115011,
+      "pr_auc": 0.15220471022168922,
+      "brier": 0.03474851565476139,
+      "log_loss": 0.13671609705753487,
+      "ece": 0.011697429673976403,
+      "calib_slope": 0.7290174784552642,
+      "calib_intercept": -0.4153535647926454,
+      "mean_pred": 0.029737625076276523,
+      "lift_top10": 4.1465517241379315,
+      "lift_top20": 3.5939524838012957,
+      "gain_top20": 0.7191011235955056,
+      "gain_top30": 0.8314606741573034,
+      "base_rate": 0.038461538461538464
+    },
+    {
+      "model": "Logistic regression",
+      "calibration": "isotonic",
+      "roc_auc": 0.8406261835626815,
+      "pr_auc": 0.14369219732380364,
+      "brier": 0.03540094945246454,
+      "log_loss": 0.13913181571932193,
+      "ece": 0.012121368835448789,
+      "calib_slope": 0.6532061670307681,
+      "calib_intercept": -0.926970287909724,
+      "mean_pred": 0.04495114830484871,
+      "lift_top10": 4.0344827586206895,
+      "lift_top20": 3.42548596112311,
+      "gain_top20": 0.6853932584269663,
+      "gain_top30": 0.8202247191011236,
+      "base_rate": 0.038461538461538464
+    },
+    {
+      "model": "Logistic regression",
+      "calibration": "platt",
+      "roc_auc": 0.8407271809115011,
+      "pr_auc": 0.15220471022168922,
+      "brier": 0.0349842864143957,
+      "log_loss": 0.13491079849733664,
+      "ece": 0.0067368848977277474,
+      "calib_slope": 0.7859379542404633,
+      "calib_intercept": -0.6409478058624399,
+      "mean_pred": 0.044411987955056846,
+      "lift_top10": 4.1465517241379315,
+      "lift_top20": 3.5939524838012957,
+      "gain_top20": 0.7191011235955056,
+      "gain_top30": 0.8314606741573034,
+      "base_rate": 0.038461538461538464
+    },
+    {
+      "model": "LightGBM",
+      "calibration": "none",
+      "roc_auc": 0.8431485923494508,
+      "pr_auc": 0.16081023659877652,
+      "brier": 0.03448196897202191,
+      "log_loss": 0.13285994074958818,
+      "ece": 0.010894545456416039,
+      "calib_slope": 0.944896323717592,
+      "calib_intercept": 0.10417049383634386,
+      "mean_pred": 0.03083869463771769,
+      "lift_top10": 4.0344827586206895,
+      "lift_top20": 3.5939524838012957,
+      "gain_top20": 0.7191011235955056,
+      "gain_top30": 0.8426966292134831,
+      "base_rate": 0.038461538461538464
+    },
+    {
+      "model": "LightGBM",
+      "calibration": "isotonic",
+      "roc_auc": 0.8464562555232925,
+      "pr_auc": 0.15249242633236,
+      "brier": 0.03521961857426492,
+      "log_loss": 0.14599474556513886,
+      "ece": 0.012020726840862004,
+      "calib_slope": 0.40993701433430724,
+      "calib_intercept": -1.4172772868545662,
+      "mean_pred": 0.044075442782935514,
+      "lift_top10": 4.258620689655172,
+      "lift_top20": 3.5939524838012957,
+      "gain_top20": 0.7191011235955056,
+      "gain_top30": 0.8202247191011236,
+      "base_rate": 0.038461538461538464
+    },
+    {
+      "model": "LightGBM",
+      "calibration": "platt",
+      "roc_auc": 0.8431485923494508,
+      "pr_auc": 0.16081023659877652,
+      "brier": 0.03545497659365193,
+      "log_loss": 0.13398337529621784,
+      "ece": 0.0147684348235546,
+      "calib_slope": 0.77536940541931,
+      "calib_intercept": -0.6431695047112439,
+      "mean_pred": 0.04364779750676693,
+      "lift_top10": 4.0344827586206895,
+      "lift_top20": 3.5939524838012957,
+      "gain_top20": 0.7191011235955056,
+      "gain_top30": 0.8426966292134831,
+      "base_rate": 0.038461538461538464
+    }
+  ],
+  "shap_top_lgbm": [
+    {
+      "feature": "trips_per_week",
+      "mean_abs_shap": 0.4933804575491351
+    },
+    {
+      "feature": "trips_42d",
+      "mean_abs_shap": 0.2711992898727834
+    },
+    {
+      "feature": "trips_28d",
+      "mean_abs_shap": 0.15342651497361035
+    },
+    {
+      "feature": "share_fresh",
+      "mean_abs_shap": 0.13330255456660814
+    },
+    {
+      "feature": "spend_28d",
+      "mean_abs_shap": 0.1173743029310086
+    },
+    {
+      "feature": "top_store_share",
+      "mean_abs_shap": 0.11363253279903773
+    },
+    {
+      "feature": "spend_per_week",
+      "mean_abs_shap": 0.10868366455745611
+    },
+    {
+      "feature": "spend_42d",
+      "mean_abs_shap": 0.09615479965321756
+    }
+  ],
+  "shap_top_logreg": [
+    {
+      "feature": "trips_per_week",
+      "mean_abs_shap": 0.8370842314432857
+    },
+    {
+      "feature": "trips_42d",
+      "mean_abs_shap": 0.7066648685162433
+    },
+    {
+      "feature": "n_stores_42d",
+      "mean_abs_shap": 0.40618776949435
+    },
+    {
+      "feature": "avg_basket_spend",
+      "mean_abs_shap": 0.3838567252704205
+    },
+    {
+      "feature": "spend_per_week",
+      "mean_abs_shap": 0.3335525860125395
+    },
+    {
+      "feature": "n_type_a_90d",
+      "mean_abs_shap": 0.3067824509932498
+    },
+    {
+      "feature": "spend_28d",
+      "mean_abs_shap": 0.23371096933691302
+    },
+    {
+      "feature": "active_week_share",
+      "mean_abs_shap": 0.22662448683568906
+    }
+  ]
+}

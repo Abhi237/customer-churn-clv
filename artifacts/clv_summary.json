@@ -1,0 +1,83 @@
+{
+  "calibration_end": "2017-07-02",
+  "observation_end": "2017-12-31",
+  "calibration_days": 182.0,
+  "holdout_days": 182.0,
+  "n_households": 2394,
+  "actual_purchases_total": 63212.0,
+  "pred_purchases_total": 64058.810978881884,
+  "purchases_mae": 8.82342721664449,
+  "purchases_corr": 0.8371336402327113,
+  "purchases_spearman": 0.813890498074021,
+  "baseline_mae_mean_rate": 17.740063050971905,
+  "actual_spend_total": 2293540.92,
+  "pred_spend_total": 2296054.3077877704,
+  "spend_corr": 0.8655340840725833,
+  "spend_spearman": 0.8137087064597004,
+  "aov_corr_repeaters": 0.730980701644619,
+  "gg_freq_spend_corr": -0.020539703692193597,
+  "naive_rate_mae": 8.96112326599197,
+  "naive_rate_pred_total": 64373.353778261655,
+  "top10_share_of_actual_spend": 0.32105707100268344,
+  "bgf_params": {
+    "r": 1.4043877139478234,
+    "alpha": 9.356622868847268,
+    "a": 0.0049575757391213384,
+    "b": 0.9552125096394748
+  },
+  "ggf_params": {
+    "p": 6.508813430850929,
+    "q": 1.9841818659814483,
+    "v": 6.924337048089818
+  },
+  "short_holdout_13w": {
+    "calibration_end": "2017-09-30",
+    "observation_end": "2017-12-31",
+    "calibration_days": 272.0,
+    "holdout_days": 92.0,
+    "n_households": 2446,
+    "actual_purchases_total": 32144.0,
+    "pred_purchases_total": 32408.79890910988,
+    "purchases_mae": 4.532146247870496,
+    "purchases_corr": 0.8357938371924587,
+    "purchases_spearman": 0.80940479752424,
+    "baseline_mae_mean_rate": 9.225552890931445,
+    "actual_spend_total": 1193229.72,
+    "pred_spend_total": 1154600.6285464983,
+    "spend_corr": 0.8608574413161039,
+    "spend_spearman": 0.8051766953973651,
+    "aov_corr_repeaters": 0.7255717515867167,
+    "gg_freq_spend_corr": 0.005031893388922539,
+    "naive_rate_mae": 4.625445594168908,
+    "naive_rate_pred_total": 32742.194443970115,
+    "top10_share_of_actual_spend": 0.32600180290514386,
+    "bgf_params": {
+      "r": 1.3970091204477715,
+      "alpha": 9.447701990356322,
+      "a": 0.006662123328535487,
+      "b": 1.1743916497399216
+    },
+    "ggf_params": {
+      "p": 6.63360141165851,
+      "q": 2.0612802558300523,
+      "v": 7.083869035226396
+    }
+  },
+  "scoring_as_of": "2017-10-01",
+  "scoring_params": {
+    "bgf": {
+      "r": 1.3970091204477715,
+      "alpha": 9.447701990356322,
+      "a": 0.006662123328535487,
+      "b": 1.1743916497399216
+    },
+    "ggf": {
+      "p": 6.63360141165851,
+      "q": 2.0612802558300523,
+      "v": 7.083869035226396
+    }
+  },
+  "clv_12m_total_scored": 4228132.027419942,
+  "clv_12m_median": 1163.5059134316625,
+  "n_scored_all_households": 2446
+}

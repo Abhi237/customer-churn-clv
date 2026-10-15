@@ -1,0 +1,76 @@
+{
+  "base_case_ASSUMED": {
+    "uplift": 0.1,
+    "gross_margin": 0.25,
+    "contact_cost_usd": 2.0,
+    "n_targeted": 116,
+    "share_targeted": 0.05012964563526361,
+    "campaign_cost_usd": 232.0,
+    "expected_net_value_usd": 190.05468444114746,
+    "expected_net_value_target_all_usd": -3277.551708881535,
+    "targeted_observed_churn_rate": 0.1206896551724138,
+    "targeted_segment_mix": {
+      "Low value / High risk": 81,
+      "Mid value / High risk": 30,
+      "High value / Medium risk": 2,
+      "High value / High risk": 3
+    },
+    "spearman_clv_vs_actual_90d_spend": 0.7953100062768278,
+    "spearman_bgnbd_trips_vs_actual_90d": 0.7982665996127011
+  },
+  "segment_sizes": [
+    {
+      "value_segment": "Low value",
+      "risk_segment": "Low risk",
+      "households": 35
+    },
+    {
+      "value_segment": "Low value",
+      "risk_segment": "Medium risk",
+      "households": 412
+    },
+    {
+      "value_segment": "Low value",
+      "risk_segment": "High risk",
+      "households": 710
+    },
+    {
+      "value_segment": "Mid value",
+      "risk_segment": "Low risk",
+      "households": 344
+    },
+    {
+      "value_segment": "Mid value",
+      "risk_segment": "Medium risk",
+      "households": 292
+    },
+    {
+      "value_segment": "Mid value",
+      "risk_segment": "High risk",
+      "households": 58
+    },
+    {
+      "value_segment": "High value",
+      "risk_segment": "Low risk",
+      "households": 392
+    },
+    {
+      "value_segment": "High value",
+      "risk_segment": "Medium risk",
+      "households": 68
+    },
+    {
+      "value_segment": "High value",
+      "risk_segment": "High risk",
+      "households": 3
+    }
+  ],
+  "sensitivity_range_net_value_usd": [
+    0.0,
+    4545.111589268492
+  ],
+  "sensitivity_range_n_targeted": [
+    0,
+    2023
+  ]
+}
