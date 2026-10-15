@@ -50,7 +50,7 @@ def reliability(y, probs: dict[str, np.ndarray], path: Path, n_bins: int = 10) -
         ax[1].hist(p, bins=20, range=(0, 1), histtype="step", color=c, label=name)
     ax[0].set(title="Reliability diagram (test cutoff, quantile bins)", xlabel="Predicted churn probability",
               ylabel="Observed churn rate")
-    ax[1].set(title="Score distribution", xlabel="Predicted probability", ylabel="Customers")
+    ax[1].set(title="Score distribution", xlabel="Predicted probability", ylabel="Households")
     ax[0].legend(fontsize=8)
     return save(fig, path)
 
@@ -61,7 +61,7 @@ def gains(lifts: dict[str, pd.DataFrame], path: Path) -> Path:
         x = np.r_[0, lt["decile"] / lt["decile"].max()]
         ax[0].plot(x * 100, np.r_[0, lt["cum_gain"]] * 100, "o-", ms=3, label=name, color=c)
     ax[0].plot([0, 100], [0, 100], "k--", lw=0.8, label="random")
-    ax[0].set(title="Cumulative gains", xlabel="% customers contacted (highest risk first)",
+    ax[0].set(title="Cumulative gains", xlabel="% households contacted (highest risk first)",
               ylabel="% of churners captured")
     ax[0].legend(fontsize=8)
     names = list(lifts)
@@ -75,12 +75,12 @@ def gains(lifts: dict[str, pd.DataFrame], path: Path) -> Path:
     return save(fig, path)
 
 
-def cohort_heatmap(cohorts: pd.DataFrame, path: Path, max_months: int = 12) -> Path:
-    m = cohorts[cohorts["months_since_acquisition"] <= max_months].pivot(
-        index="acquisition_cohort", columns="months_since_acquisition", values="retention_rate")
+def cohort_heatmap(cohorts: pd.DataFrame, path: Path, max_months: int = 11) -> Path:
+    m = cohorts[cohorts["months_since_entry"] <= max_months].pivot(
+        index="entry_cohort", columns="months_since_entry", values="retention_rate")
     m.index = pd.to_datetime(m.index).strftime("%Y-%m")
     fig, ax = plt.subplots(figsize=(11, 7))
-    im = ax.imshow(m.values, aspect="auto", cmap="Blues", vmin=0, vmax=0.5)
+    im = ax.imshow(m.values, aspect="auto", cmap="Blues", vmin=0, vmax=1)
     ax.set_xticks(range(m.shape[1]), m.columns)
     ax.set_yticks(range(m.shape[0]), m.index)
     for i in range(m.shape[0]):
@@ -88,9 +88,10 @@ def cohort_heatmap(cohorts: pd.DataFrame, path: Path, max_months: int = 12) -> P
             v = m.values[i, j]
             if not np.isnan(v) and j > 0:
                 ax.text(j, i, f"{v:.0%}", ha="center", va="center", fontsize=6.5,
-                        color="white" if v > 0.3 else "black")
-    ax.set(title="Monthly acquisition cohorts: share of customers purchasing in month k",
-           xlabel="Months since first purchase", ylabel="Acquisition cohort")
+                        color="white" if v > 0.6 else "black")
+    ax.set(title="Entry cohorts (first observed purchase month): share of households shopping in month k",
+           xlabel="Months since first observed purchase month",
+           ylabel="Entry cohort (not acquisition: panel starts 2017-01)")
     ax.grid(False)
     fig.colorbar(im, ax=ax, fraction=0.03, format=matplotlib.ticker.PercentFormatter(1.0))
     return save(fig, path)
@@ -98,12 +99,13 @@ def cohort_heatmap(cohorts: pd.DataFrame, path: Path, max_months: int = 12) -> P
 
 def clv_holdout(ch: pd.DataFrame, path: Path) -> Path:
     fig, ax = plt.subplots(1, 2, figsize=(11, 4.5))
-    b = ch.assign(fbin=np.minimum(ch["frequency_cal"], 15)).groupby("fbin")
+    b = ch.assign(fbin=(np.minimum(ch["frequency_cal"], 60) // 5 * 5)).groupby("fbin")
     agg = b[["frequency_holdout", "pred_purchases"]].mean()
     ax[0].plot(agg.index, agg["frequency_holdout"], "o-", label="actual", color=PALETTE[0])
     ax[0].plot(agg.index, agg["pred_purchases"], "s--", label="BG/NBD predicted", color=PALETTE[1])
-    ax[0].set(title="Holdout purchases by calibration-period repeat count",
-              xlabel="Repeat purchases in calibration period (15 = 15+)", ylabel="Mean purchases in holdout")
+    ax[0].set(title="Holdout shopping days by calibration-period repeat count",
+              xlabel="Repeat shopping days in calibration period (5-day bins, 60 = 60+)",
+              ylabel="Mean shopping days in holdout")
     ax[0].legend()
     d = ch.assign(dec=pd.qcut(ch["pred_spend"].rank(method="first"), 10, labels=range(1, 11)))
     g = d.groupby("dec", observed=True)[["actual_spend", "pred_spend"]].mean()
@@ -111,13 +113,13 @@ def clv_holdout(ch: pd.DataFrame, path: Path) -> Path:
     ax[1].bar(x - 0.2, g["actual_spend"], 0.4, label="actual", color=PALETTE[0])
     ax[1].bar(x + 0.2, g["pred_spend"], 0.4, label="BG/NBD x Gamma-Gamma", color=PALETTE[1])
     ax[1].set(title="Holdout spend by predicted-spend decile", xlabel="Predicted decile (10 = highest)",
-              ylabel="Mean holdout spend (GBP)", xticks=x)
+              ylabel="Mean holdout spend (USD)", xticks=x)
     ax[1].legend()
     return save(fig, path)
 
 
-def targeting_matrix(mat: pd.DataFrame, path: Path) -> Path:
-    cnt = mat.pivot(index="value_segment", columns="risk_segment", values="customers")
+def targeting_matrix(mat: pd.DataFrame, path: Path, scored_at: str = "") -> Path:
+    cnt = mat.pivot(index="value_segment", columns="risk_segment", values="households")
     val = mat.pivot(index="value_segment", columns="risk_segment", values="total_clv_12m")
     cnt, val = cnt.iloc[::-1], val.iloc[::-1]
     fig, ax = plt.subplots(figsize=(8, 4.8))
@@ -126,31 +128,31 @@ def targeting_matrix(mat: pd.DataFrame, path: Path) -> Path:
     ax.set_yticks(range(cnt.shape[0]), cnt.index)
     for i in range(cnt.shape[0]):
         for j in range(cnt.shape[1]):
-            ax.text(j, i, f"{int(cnt.values[i, j]):,} customers\nGBP {val.values[i, j] / 1e3:,.0f}k CLV",
+            ax.text(j, i, f"{int(cnt.values[i, j]):,} households\n${val.values[i, j] / 1e3:,.0f}k CLV",
                     ha="center", va="center", fontsize=8.5)
     ax.grid(False)
-    ax.set(title="Retention targeting matrix (scored at 2011-09-01)", xlabel="Calibrated churn-proxy risk",
+    ax.set(title=f"Retention targeting matrix (scored at {scored_at})", xlabel="Calibrated churn-proxy risk",
            ylabel="Predicted 12-month CLV tier")
-    fig.colorbar(im, ax=ax, fraction=0.04, label="Total predicted 12m CLV (GBP k)")
+    fig.colorbar(im, ax=ax, fraction=0.04, label="Total predicted 12m CLV (USD k)")
     return save(fig, path)
 
 
 def sensitivity_heatmap(sens: pd.DataFrame, margin: float, path: Path) -> Path:
-    s = sens[sens["gross_margin"] == margin].pivot(index="uplift", columns="contact_cost_gbp",
-                                                   values="expected_net_value_gbp")
-    n = sens[sens["gross_margin"] == margin].pivot(index="uplift", columns="contact_cost_gbp", values="n_targeted")
+    s = sens[sens["gross_margin"] == margin].pivot(index="uplift", columns="contact_cost_usd",
+                                                   values="expected_net_value_usd")
+    n = sens[sens["gross_margin"] == margin].pivot(index="uplift", columns="contact_cost_usd", values="n_targeted")
     fig, ax = plt.subplots(figsize=(8, 4.5))
     im = ax.imshow(s.values / 1e3, cmap="Greens", origin="lower")
-    ax.set_xticks(range(s.shape[1]), [f"GBP {c:g}" for c in s.columns])
+    ax.set_xticks(range(s.shape[1]), [f"${c:g}" for c in s.columns])
     ax.set_yticks(range(s.shape[0]), [f"{u:.0%}" for u in s.index])
     for i in range(s.shape[0]):
         for j in range(s.shape[1]):
-            ax.text(j, i, f"GBP {s.values[i, j] / 1e3:,.1f}k\n{int(n.values[i, j]):,} targeted", ha="center",
+            ax.text(j, i, f"${s.values[i, j] / 1e3:,.1f}k\n{int(n.values[i, j]):,} targeted", ha="center",
                     va="center", fontsize=8)
     ax.grid(False)
     ax.set(title=f"SCENARIO (assumed inputs): expected net value, margin {margin:.0%}",
            xlabel="Assumed contact cost per customer", ylabel="Assumed relative churn reduction")
-    fig.colorbar(im, ax=ax, fraction=0.04, label="GBP k")
+    fig.colorbar(im, ax=ax, fraction=0.04, label="USD k")
     return save(fig, path)
 
 
@@ -158,6 +160,44 @@ def backtest(bt: pd.DataFrame, path: Path) -> Path:
     fig, ax = plt.subplots(figsize=(8, 4))
     for (m, g), c in zip(bt.groupby("model"), PALETTE):
         ax.plot(pd.to_datetime(g["eval_cutoff"]), g["pr_auc"], "o-", label=m, color=c)
-    ax.set(title="Rolling-origin backtest: PR-AUC by evaluation cutoff", ylabel="PR-AUC")
+    ax.set(title="Rolling-origin backtest: PR-AUC by evaluation cutoff (expanding training window)", ylabel="PR-AUC")
     ax.legend(fontsize=8)
+    return save(fig, path)
+
+
+def campaign_outcomes(tab: pd.DataFrame, path: Path) -> Path:
+    """Observed churn-proxy rate by campaign-targeting status within risk tier (descriptive, NOT causal)."""
+    fig, ax = plt.subplots(figsize=(9, 4.5))
+    tiers = list(tab["risk_segment"].unique())
+    w = 0.38
+    for k, (flag, c) in enumerate([(False, PALETTE[2]), (True, PALETTE[0])]):
+        g = tab[tab["targeted_in_window"] == flag].set_index("risk_segment").reindex(tiers)
+        x = np.arange(len(tiers)) + (k - 0.5) * w
+        err = np.vstack([g["churn_rate"] - g["ci_lo"], g["ci_hi"] - g["churn_rate"]])
+        ax.bar(x, g["churn_rate"], w, yerr=err, color=c, capsize=3,
+               label="targeted by a campaign starting in the label window" if flag else "not targeted")
+    ax.set_xticks(np.arange(len(tiers)), tiers)
+    ax.set_ylabel("Observed churn-proxy rate (95% Wilson CI)")
+    ax.set_title("Association only: targeting was not randomised, groups differ at baseline")
+    ax.legend(fontsize=8)
+    return save(fig, path)
+
+
+def demographics_profile(tab: pd.DataFrame, path: Path) -> Path:
+    """Behavioural profile by demographic group (partial coverage, small cells). Observed churn events are
+    annotated, not plotted as rates: with so few events a rate chart would mislead."""
+    dims = list(tab["dimension"].unique())
+    fig, axes = plt.subplots(2, len(dims), figsize=(4.2 * len(dims), 7.2), squeeze=False)
+    for j, d in enumerate(dims):
+        g = tab[tab["dimension"] == d]
+        xl = [f"{lv}\n(n={n}, {k} ev.)" for lv, n, k in zip(g["level"], g["n_scored"], g["n_churned"])]
+        axes[0, j].bar(range(len(g)), g["mean_clv_12m"], color=PALETTE[0])
+        axes[0, j].set_title(d, fontsize=10)
+        axes[1, j].bar(range(len(g)), g["mean_spend_per_week"], color=PALETTE[1])
+        for ax in axes[:, j]:
+            ax.set_xticks(range(len(g)), xl, fontsize=7, rotation=30, ha="right")
+    axes[0, 0].set_ylabel("Mean 12-month CLV (USD, model estimate)")
+    axes[1, 0].set_ylabel("Mean weekly spend (USD)")
+    fig.suptitle("Behaviour by demographic group: partial coverage (801 of 2,469 households); ev. = churn-proxy events",
+                 fontsize=10)
     return save(fig, path)

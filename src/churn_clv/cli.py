@@ -16,18 +16,18 @@ def _p(obj):
 
 @click.group()
 def main():
-    """Customer churn-proxy & CLV pipeline (UCI Online Retail II)."""
+    """Household churn-proxy & CLV pipeline (Complete Journey grocery loyalty panel)."""
 
 
 @main.command()
 def data():
-    """Download the raw dataset and convert to parquet."""
+    """Download the Complete Journey CSVs (R + internet needed once)."""
     subprocess.run(["python", str(ROOT / "scripts/download_data.py")], check=True)
 
 
 @main.command()
 def sql():
-    """Run numbered DuckDB SQL scripts (cleaning, DQ, cohorts, rolling activity, RFM, survival)."""
+    """Run numbered DuckDB SQL scripts (cleaning, DQ, baskets, cohorts, rolling activity, RFM, campaigns, survival)."""
     _p(pipeline.run_sql())
 
 
@@ -50,18 +50,30 @@ def target():
 
 
 @main.command()
+def campaigns():
+    """Observational campaign / coupon analysis at the test cutoff (descriptive, not causal)."""
+    _p(pipeline.run_campaigns())
+
+
+@main.command()
+def demographics():
+    """Demographic breakout for the households that have demographics (partial coverage)."""
+    _p(pipeline.run_demographics())
+
+
+@main.command()
 @click.option("--cutoff", required=True, help="Scoring date YYYY-MM-DD; only data before it is used.")
 @click.option("--out", default=None, help="Output CSV path.")
 def score(cutoff, out):
-    """Score customers at a cutoff with the saved calibrated model."""
+    """Score households at a cutoff with the saved calibrated model."""
     click.echo(f"wrote {pipeline.score(cutoff, out)}")
 
 
 @main.command(name="all")
 @click.pass_context
 def all_(ctx):
-    """Run sql -> train -> clv -> target."""
-    for cmd in (sql, train, clv, target):
+    """Run sql -> train -> clv -> target -> campaigns -> demographics."""
+    for cmd in (sql, train, clv, target, campaigns, demographics):
         ctx.invoke(cmd)
 
 

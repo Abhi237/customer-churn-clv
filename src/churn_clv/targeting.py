@@ -1,7 +1,7 @@
-"""Value x risk segmentation and an expected-ROI targeting rule.
+"""Value x risk segmentation and an expected-ROI targeting rule (USD).
 
-IMPORTANT: uplift, contact cost and margin are ASSUMPTIONS (no retention experiment exists in the
-data). Outputs are scenario estimates, never observed impact.
+IMPORTANT: uplift, contact cost and margin are ASSUMPTIONS (no retention or coupon experiment exists in the data,
+and campaign targeting was not randomised). Outputs are scenario estimates, never observed impact.
 """
 from __future__ import annotations
 
@@ -26,13 +26,13 @@ def assign_segments(df: pd.DataFrame, risk_quantiles, risk_labels, value_quantil
 
 
 def expected_net_value(churn_prob, clv, uplift: float, margin: float, cost: float) -> np.ndarray:
-    """Expected incremental margin of contacting a customer minus contact cost.
+    """Expected incremental margin of contacting a household minus contact cost.
 
     E[gain] = p_churn * uplift * CLV_12m * margin - cost
 
-    `uplift` is the ASSUMED relative reduction in churn probability caused by the treatment (so the
-    expected number of customers "saved" is p_churn * uplift). CLV_12m is used as the value of a saved
-    customer - an approximation (BG/NBD CLV is already probability-of-alive weighted, so this is conservative).
+    `uplift` is the ASSUMED relative reduction in churn probability caused by the treatment (so the expected
+    number of households "saved" is p_churn * uplift). CLV_12m is used as the value of a saved household - an
+    approximation (BG/NBD CLV is already probability-of-alive weighted, so this is conservative).
     """
     p = np.asarray(churn_prob, float)
     return p * uplift * np.asarray(clv, float) * margin - cost
@@ -42,11 +42,11 @@ def targeting_summary(df: pd.DataFrame, uplift: float, margin: float, cost: floa
     env = expected_net_value(df["churn_prob"], df["clv_12m"], uplift, margin, cost)
     tgt = env > 0
     return {
-        "uplift": uplift, "gross_margin": margin, "contact_cost_gbp": cost,
+        "uplift": uplift, "gross_margin": margin, "contact_cost_usd": cost,
         "n_targeted": int(tgt.sum()), "share_targeted": float(tgt.mean()),
-        "campaign_cost_gbp": float(cost * tgt.sum()),
-        "expected_net_value_gbp": float(env[tgt].sum()),
-        "expected_net_value_target_all_gbp": float(env.sum()),
+        "campaign_cost_usd": float(cost * tgt.sum()),
+        "expected_net_value_usd": float(env[tgt].sum()),
+        "expected_net_value_target_all_usd": float(env.sum()),
     }
 
 
@@ -56,10 +56,9 @@ def sensitivity_grid(df: pd.DataFrame, uplifts, margins, costs) -> pd.DataFrame:
 
 
 def segment_matrix(df: pd.DataFrame) -> pd.DataFrame:
-    g = df.groupby(["value_segment", "risk_segment"], observed=False).agg(
-        customers=("customer_id", "size"),
+    return df.groupby(["value_segment", "risk_segment"], observed=False).agg(
+        households=("household_id", "size"),
         mean_churn_prob=("churn_prob", "mean"),
         mean_clv_12m=("clv_12m", "mean"),
         total_clv_12m=("clv_12m", "sum"),
     ).reset_index()
-    return g

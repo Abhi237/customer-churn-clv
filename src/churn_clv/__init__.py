@@ -1,3 +1,3 @@
-"""Customer lifecycle, churn-proxy and CLV modelling on UCI Online Retail II."""
+"""Household churn-proxy and CLV modelling on the Complete Journey US grocery loyalty panel."""
 
-__version__ = "1.0.0"
+__version__ = "2.0.0"

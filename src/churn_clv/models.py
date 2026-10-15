@@ -13,9 +13,11 @@ from sklearn.preprocessing import FunctionTransformer, StandardScaler
 
 from .features import FEATURE_COLUMNS
 
-LOG_COLS = ["recency_days", "tenure_days", "frequency", "monetary_total", "avg_order_value",
-            "revenue_90d", "revenue_180d", "n_distinct_products", "mean_interpurchase_days",
-            "std_interpurchase_days", "recency_to_gap_ratio", "avg_products_per_invoice"]
+LOG_COLS = ["recency_days", "trips_per_week", "spend_per_week", "trips_28d", "trips_42d", "spend_28d",
+            "spend_42d", "trip_ratio_28d", "mean_interpurchase_days", "std_interpurchase_days",
+            "recency_to_gap_ratio", "avg_basket_spend", "avg_units_per_basket", "avg_lines_per_basket",
+            "n_stores_42d", "n_campaigns_90d", "n_campaigns_active", "n_type_a_90d", "redemptions_90d",
+            "redemptions_42d"]
 
 
 class RecencyRule:
@@ -37,21 +39,22 @@ class RecencyRule:
 
 class RFMHeuristic:
     """Baseline 2: classic RFM score (quintiles fitted on train), lower score => higher churn risk.
-    Mapped to a probability by the train churn rate of each RFM score sum."""
+    F and M are weekly RATES (trips per week, spend per week) so that the quintile edges fitted on short early
+    history stay meaningful at later cutoffs. Mapped to a probability by the train churn rate of each score sum."""
 
     name = "baseline_rfm"
 
     def _score(self, X):
         r = 5 - np.clip(np.searchsorted(self.r_edges_, X["recency_days"], side="right") - 1, 0, 4)
-        f = 1 + np.clip(np.searchsorted(self.f_edges_, X["frequency"], side="right") - 1, 0, 4)
-        m = 1 + np.clip(np.searchsorted(self.m_edges_, X["monetary_total"], side="right") - 1, 0, 4)
+        f = 1 + np.clip(np.searchsorted(self.f_edges_, X["trips_per_week"], side="right") - 1, 0, 4)
+        m = 1 + np.clip(np.searchsorted(self.m_edges_, X["spend_per_week"], side="right") - 1, 0, 4)
         return r + f + m
 
     def fit(self, X, y):
         q = np.linspace(0, 1, 6)[:-1]
         self.r_edges_ = np.quantile(X["recency_days"], q)
-        self.f_edges_ = np.quantile(X["frequency"], q)
-        self.m_edges_ = np.quantile(X["monetary_total"], q)
+        self.f_edges_ = np.quantile(X["trips_per_week"], q)
+        self.m_edges_ = np.quantile(X["spend_per_week"], q)
         s = self._score(X)
         rates = pd.Series(np.asarray(y, float)).groupby(s).mean()
         self.rates_ = rates.reindex(range(3, 16)).interpolate().ffill().bfill()
@@ -76,11 +79,13 @@ def make_logreg(random_state: int = 42) -> Pipeline:
     ])
 
 
-LGBM_GRID = [  # small grid; selected on the validation snapshot only (never on test)
-    {"num_leaves": 15, "min_child_samples": 40, "n_estimators": 400, "learning_rate": 0.03},
+LGBM_GRID = [  # small grid; selected on the validation snapshot only (never on test). Few positives (~3-4%
+    # prevalence) => shallow trees and large leaves.
+    {"num_leaves": 15, "min_child_samples": 40, "n_estimators": 300, "learning_rate": 0.03},
     {"num_leaves": 7, "min_child_samples": 100, "n_estimators": 300, "learning_rate": 0.03},
     {"num_leaves": 4, "min_child_samples": 200, "n_estimators": 400, "learning_rate": 0.03},
-    {"num_leaves": 7, "min_child_samples": 200, "n_estimators": 600, "learning_rate": 0.01},
+    {"num_leaves": 4, "min_child_samples": 100, "n_estimators": 200, "learning_rate": 0.02},
+    {"num_leaves": 3, "min_child_samples": 150, "n_estimators": 500, "learning_rate": 0.01},
 ]
 
 
@@ -94,11 +99,13 @@ def make_lgbm(random_state: int = 42, params: dict | None = None) -> lgb.LGBMCla
 
 @dataclass
 class Calibrator:
-    method: str  # "isotonic" | "platt"
+    method: str  # "isotonic" | "platt" | "none" (identity)
 
     def fit(self, p, y):
         p = np.clip(np.asarray(p, float), 1e-6, 1 - 1e-6)
-        if self.method == "isotonic":
+        if self.method == "none":
+            self.model_ = None
+        elif self.method == "isotonic":
             self.model_ = IsotonicRegression(out_of_bounds="clip", y_min=0.0, y_max=1.0).fit(p, y)
         else:
             self.model_ = LogisticRegression(C=1e6).fit(np.log(p / (1 - p)).reshape(-1, 1), y)
@@ -106,6 +113,8 @@ class Calibrator:
 
     def transform(self, p):
         p = np.clip(np.asarray(p, float), 1e-6, 1 - 1e-6)
+        if self.method == "none":
+            return p
         if self.method == "isotonic":
             return self.model_.predict(p)
         return self.model_.predict_proba(np.log(p / (1 - p)).reshape(-1, 1))[:, 1]
