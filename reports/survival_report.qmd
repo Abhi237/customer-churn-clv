@@ -1,7 +1,7 @@
 ---
-title: "Time to Inactivity: Survival Analysis of Online Retail II Customers"
-subtitle: "Kaplan-Meier, log-rank tests and Cox proportional hazards (R validation layer)"
-author: "Customer Lifecycle, Churn & CLV project"
+title: "Time to Inactivity: Survival Analysis of US Grocery Loyalty Households"
+subtitle: "Kaplan-Meier, log-rank tests and Cox proportional hazards (R validation layer) on the Complete Journey data"
+author: "Household churn and lifetime value project"
 date: today
 format:
   html:
@@ -15,21 +15,25 @@ execute:
   message: false
 ---
 
-## Question and event definition
+## Question, data and event definition
 
-Python's churn model answers *who* is likely to lapse in the next 90 days. This report asks *when*
-customers lapse after acquisition and which acquisition-time characteristics shift that timing.
+The Python models answer *who* is likely to be inactive in the 90 days after a cutoff. This report asks *when*
+households first go quiet and which early shopping behaviours are associated with that timing.
 
-* **Event (lapse)** - the first inter-purchase gap longer than 90 days (same 90-day horizon as the churn
-  proxy). This is an inactivity proxy, not an observed cancellation.
-* **Duration** - active days from first purchase to the last purchase before the lapse (+1 day, so a
-  customer who never returns has duration 1).
-* **Censoring** - customers with no observable lapse by the data end minus 90 days.
-* **Covariates** are fixed at acquisition (first-order value, first-order product count, country,
-  acquisition quarter). End-of-period RFM scores are deliberately *not* used: they are computed from the
-  outcome period and would create immortal-time bias.
-* Customers first seen in Dec-2009 are left-truncated (the extract starts then) and are excluded from the
-  main analysis; a sensitivity check includes them.
+Data: the `completejourney` CC0 sample released by 84.51 (2,469 loyalty-card households, calendar year 2017,
+one retail chain). There is no subscription or cancellation record, so everything below is an **inactivity
+proxy**, not observed churn.
+
+* **Event (lapse)**: the first gap between two shopping days longer than 90 days, starting at or after the
+  landmark. A lapse is only confirmable if the 90-day gap fits inside the data, so households with no
+  confirmable lapse are right-censored at `data_end - 90` days.
+* **Time origin**: the first *observed* purchase. The panel starts on 2017-01-01, so this is **not** acquisition:
+  households that already shopped before 2017 enter at their first 2017 purchase (left-censored tenure).
+* **Landmark design**: baseline covariates are measured over the 28 days after the origin and households enter
+  the risk set at origin + 28 days. Covariates never use follow-up information, which avoids immortal-time bias.
+* **Exclusions** (counted, not hidden): households whose landmark falls after `data_end - 90` (no time at
+  risk) and households that already lapsed before the landmark.
+* Everything is an observational association. Nothing here is a causal effect of coupons or basket size.
 
 ```{r run}
 #| output: false
@@ -45,16 +49,18 @@ rd <- function(f) readr::read_csv(file.path(out, f), show_col_types = FALSE)
 
 ## Overall survival
 
-`r nrow(d)` customers, `r sum(d$event)` lapse events (`r round(100*mean(d$event),1)`%).
+`r nrow(d)` households analysed, `r sum(d$event)` lapse events (`r round(100*mean(d$event),1)`%), maximum
+follow-up `r max(d$duration_days)` days after the landmark.
 
 ```{r km-overall-table}
-kable(rd("km_overall.csv"), digits = 3, caption = "Kaplan-Meier: share of customers without a 90-day lapse")
+kable(rd("km_overall.csv"), digits = 3, caption = "Kaplan-Meier: share of households without a 90-day lapse")
 ```
 
 ![](../docs/figures/km_overall.png)
 
-The survival curve drops by roughly 60% at day 1: most customers' *first* purchase is followed by a gap of
-more than 90 days. Activation after the first order is therefore the dominant lifecycle problem.
+The curve is flat compared with a subscription business: most loyalty-card households keep shopping. The
+median time to lapse is not reached within the follow-up window, so we report survival at fixed horizons
+instead of a median.
 
 ## Segment comparisons (log-rank)
 
@@ -63,22 +69,31 @@ kable(rd("logrank_tests.csv"), digits = 4, caption = "Log-rank tests")
 ```
 
 ::: {.panel-tabset}
-### First-order value tier
-![](../docs/figures/km_by_first_value_tier.png)
+### Baseline trips (tertiles)
+![](../docs/figures/km_by_trip_tier.png)
 ```{r}
-kable(rd("km_by_first_value_tier.csv"), digits = 3)
+kable(rd("km_by_trip_tier.csv"), digits = 3)
 ```
-### Country group
-![](../docs/figures/km_by_country_group.png)
+### Baseline basket size (quartiles)
+![](../docs/figures/km_by_basket_tier.png)
 ```{r}
-kable(rd("km_by_country_group.csv"), digits = 3)
+kable(rd("km_by_basket_tier.csv"), digits = 3)
 ```
-### Acquisition quarter
-![](../docs/figures/km_by_acq_quarter.png)
+### Coupon use in baseline window
+![](../docs/figures/km_by_coupon_user.png)
 ```{r}
-kable(rd("km_by_acq_quarter.csv"), digits = 3)
+kable(rd("km_by_coupon_user.csv"), digits = 3)
+```
+### Entry month group
+![](../docs/figures/km_by_entry_group.png)
+```{r}
+kable(rd("km_by_entry_group.csv"), digits = 3)
 ```
 :::
+
+Entry month group is partly a data-window artifact: households that first appear after January are
+lighter shoppers (median 2 baseline trips versus 4 for January entrants), as a household that shopped weekly would
+usually have appeared in January. It is therefore used as an adjustment variable, not interpreted as a cohort effect.
 
 ## Cox proportional hazards
 
@@ -86,7 +101,7 @@ kable(rd("km_by_acq_quarter.csv"), digits = 3)
 kable(rd("cox_hazard_ratios.csv"), digits = 3, caption = "Hazard ratios (HR < 1 = slower lapse)")
 ```
 
-Concordance: `r round(cs$concordance[1], 3)`.
+Concordance: `r round(cs$concordance[1], 3)` (se `r round(cs$concordance[2], 3)`).
 
 ### Proportional-hazards check (`cox.zph`)
 
@@ -96,24 +111,29 @@ kable(rd("cox_zph.csv"), digits = 4)
 
 ![](../docs/figures/cox_zph_schoenfeld.png)
 
-Acquisition quarter violates PH (its effect varies over follow-up time, consistent with seasonal
-wholesale buying). The remedy is a Cox model **stratified** on acquisition quarter:
+The global test rejects proportional hazards (p < 0.01): baseline trip frequency (`log_trips`) and the entry group
+both show time-varying effects (see the Schoenfeld plots). The model is therefore refitted **stratified** on entry
+group, which brings the global test closer to non-significance, but the `log_trips` violation remains. Its hazard
+ratio should be read as an *average* effect over follow-up, not a constant one.
 
 ```{r strat}
-kable(rd("cox_stratified_hazard_ratios.csv"), digits = 3)
-kable(rd("cox_stratified_zph.csv"), digits = 4)
+kable(rd("cox_stratified_hazard_ratios.csv"), digits = 3, caption = "Stratified Cox (strata = entry group)")
+kable(rd("cox_stratified_zph.csv"), digits = 4, caption = "Stratified cox.zph")
 ```
 
 ## Sensitivity and limitations
 
 ```{r sens}
-cat(tail(readLines(file.path(out, "summary.txt")), 1))
+cat(tail(readLines(file.path(out, "summary.txt")), 2), sep = "\n")
 ```
 
-* Lapse is a behavioural proxy; a customer may return after 90+ days (the event is "first lapse", not
-  permanent churn).
-* Covariates are acquisition-time only; the Python model covers time-varying behaviour.
-* Results are associations, not causal effects of order size.
+* Lapse is a behavioural proxy; a household may return after 90 or more days (the event is "first lapse",
+  not permanent churn).
+* One calendar year only: follow-up is at most about 8 months after the landmark and tenure before 2017 is unknown.
+* Covariates are baseline-window only; the Python model uses time-varying behaviour.
+* Demographics cover 801 of 2,469 households and those households are heavier shoppers, with very few lapse
+  events (see the line above), so no demographic survival model is fitted.
+* Results are associations, not causal effects of coupons, basket size or store pattern.
 
 ```{r session}
 #| code-fold: true
