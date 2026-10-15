@@ -1,12 +1,12 @@
 step,n_rows
-raw lines,1469307
 "dropped: empty lines (no value, no discount)",5859
-dropped: zero quantity with positive sales,29
 "dropped: zero price, no discount",263
-"kept lines (merchandise, free items, coupon-only, returns)",1463156
-kept: merchandise lines,1458032
-"kept: free-item lines ($0 sales, discounted)",2143
-kept: coupon-only lines,2981
-kept: return lines (negative quantity or value),0
-"flagged: quantity above max (units set to NULL, dollars kept)",13494
+dropped: zero quantity with positive sales,29
 flagged: line above high-value threshold (kept),2
+"flagged: quantity above max (units set to NULL, dollars kept)",13494
+"kept lines (merchandise, free items, coupon-only, returns)",1463156
+kept: coupon-only lines,2981
+"kept: free-item lines ($0 sales, discounted)",2143
+kept: merchandise lines,1458032
+kept: return lines (negative quantity or value),0
+raw lines,1469307

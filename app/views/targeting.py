@@ -79,9 +79,11 @@ fig.update_traces(texttemplate="$%{z:,.0f}")
 fig.update_layout(title=f"Expected net value if the rule is applied (margin {margin:.0%}, ASSUMED)", height=420)
 st.plotly_chart(fig, width="stretch")
 lo, hi = ts["sensitivity_range_net_value_usd"]
-st.caption("The committed pipeline runs the same calculation over a grid of ASSUMED uplift, margin and cost "
-           f"(artifacts/targeting_sensitivity.csv): expected net value ranges from {usd(lo)} to {usd(hi)}. "
-           "Values are small relative to total CLV because grocery margins are thin and observed churn is rare.")
+# escape "$" so that two dollar amounts in one caption are not parsed as a LaTeX formula
+sens_text = (f"The committed pipeline runs the same calculation over a grid of ASSUMED uplift, margin and cost "
+             f"(artifacts/targeting_sensitivity.csv): expected net value ranges from {usd(lo)} to {usd(hi)}.")
+st.caption(sens_text.replace("$", "\\$") + " Values are small relative to total CLV because grocery margins are thin "
+           "and observed churn is rare.")
 
 st.subheader("Target list")
 cols = ["household_id", "value_segment", "risk_segment", "churn_prob", "clv_12m", "env", "recency_days",

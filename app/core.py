@@ -93,11 +93,13 @@ def shap_values(model: str = "logreg") -> pd.DataFrame:
 
 
 def usd(x: float) -> str:
-    if abs(x) >= 1e6:
-        return f"${x / 1e6:,.2f}M"
-    if abs(x) >= 1e4:
-        return f"${x / 1e3:,.0f}K"
-    return f"${x:,.0f}"
+    sign = "-" if x < 0 else ""
+    a = abs(x)
+    if a >= 1e6:
+        return f"{sign}${a / 1e6:,.2f}M"
+    if a >= 1e4:
+        return f"{sign}${a / 1e3:,.0f}K"
+    return f"{sign}${a:,.0f}"
 
 
 def test_metrics() -> pd.DataFrame:

@@ -45,6 +45,8 @@ st.plotly_chart(fig, width="stretch")
 if seg in lr.index:
     t = lr.loc[seg]
     st.markdown(f"**Log-rank test:** chi-square = {t.chisq:.1f}, df = {int(t.df)}, p = {t.p_value:.2g}")
+if seg == "trip_tier":
+    st.caption("Baseline-trip tiers use value-based cut points (ties stay together), so tier sizes are unequal.")
 if seg == "entry_group":
     st.caption("Entry group is partly a data-window artifact: households first seen after January are lighter shoppers. "
                "It is used as an adjustment variable, not read as a cohort effect.")

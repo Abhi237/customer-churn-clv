@@ -17,12 +17,16 @@ dir.create(fig_dir, showWarnings = FALSE, recursive = TRUE)
 dir.create(out_dir, showWarnings = FALSE, recursive = TRUE)
 
 tier <- function(x, k, labels) {
-  # rank-based tiers so that ties cannot collapse a tier
-  factor(labels[ceiling(rank(x, ties.method = "first") / length(x) * k)], levels = labels)
+  # quantile tiers; households with the same value always share a tier (ties stay together), so tier sizes
+  # are only approximately equal. The break points are real values of the variable, hence reproducible.
+  br <- unique(quantile(x, probs = seq(0, 1, length.out = k + 1), type = 1, names = FALSE))
+  stopifnot(length(br) == k + 1)
+  factor(labels[as.integer(cut(x, br, include.lowest = TRUE))], levels = labels)
 }
 
 d <- read_csv(file.path(root, "data/processed/survival_households.csv"), show_col_types = FALSE,
               col_types = cols(household_id = col_character(), age = col_character(), income = col_character())) |>
+  arrange(as.numeric(household_id)) |>   # fixed row order: rank-based tiers must not depend on file order
   mutate(
     trip_tier = tier(baseline_trips, 3, c("Low (T1)", "Mid (T2)", "High (T3)")),
     basket_tier = tier(baseline_avg_basket_spend, 4, c("Q1 (smallest)", "Q2", "Q3", "Q4 (largest)")),
@@ -40,6 +44,10 @@ d <- read_csv(file.path(root, "data/processed/survival_households.csv"), show_co
 
 lines <- c(sprintf("households analysed: %d; lapse events: %d (%.1f%%); max follow-up %d days",
                    nrow(d), sum(d$event), 100 * mean(d$event), max(d$duration_days)))
+
+lines <- c(lines, sprintf("trip tiers (T1/T2/T3) sizes: %s; trips per tier max: %s",
+                          paste(table(d$trip_tier), collapse = "/"),
+                          paste(tapply(d$baseline_trips, d$trip_tier, max), collapse = "/")))
 
 theme_set(theme_minimal(base_size = 11))
 km_curves <- list()

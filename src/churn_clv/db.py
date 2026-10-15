@@ -98,7 +98,8 @@ EXPORT_CSV = {"survival_households", "cohort_retention", "dq_report", "dq_cleani
 def export_tables(con: duckdb.DuckDBPyConnection, out_dir: Path, tables: list[str]) -> None:
     out_dir.mkdir(parents=True, exist_ok=True)
     for t in tables:
-        df = con.execute(f"SELECT * FROM {t}").df()
+        order = " ORDER BY ALL" if t in EXPORT_CSV else ""   # deterministic row order for files read by R
+        df = con.execute(f"SELECT * FROM {t}{order}").df()
         df.to_parquet(out_dir / f"{t}.parquet", index=False)
         if t in EXPORT_CSV:
             df.to_csv(out_dir / f"{t}.csv", index=False)

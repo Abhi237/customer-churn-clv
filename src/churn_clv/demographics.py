@@ -47,7 +47,9 @@ def breakout(scored: pd.DataFrame, min_cell_size: int = 30) -> pd.DataFrame:
             rows.append({
                 "dimension": dim, "level": lvl, "n_scored": n, "n_churned": k, "churn_rate": k / n,
                 "ci_lo": float(lo), "ci_hi": float(hi), "mean_churn_prob": float(g["churn_prob"].mean()),
-                "mean_clv_12m": float(g["clv_12m"].mean()), "mean_monetary_total": float(g["monetary_total"].mean()),
+                "mean_clv_12m": float(g["clv_12m"].mean()), "mean_trips_per_week": float(g["trips_per_week"].mean()),
+                "mean_spend_per_week": float(g["spend_per_week"].mean()),
+                "mean_monetary_total": float(g["monetary_total"].mean()),
                 "mean_avg_basket_spend": float(g["avg_basket_spend"].mean()),
                 "mean_coupon_disc_share": float(g["coupon_disc_share"].mean()),
                 "mean_retail_disc_share": float(g["retail_disc_share"].mean()),

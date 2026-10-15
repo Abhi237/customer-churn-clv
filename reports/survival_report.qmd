@@ -64,6 +64,9 @@ instead of a median.
 
 ## Segment comparisons (log-rank)
 
+Tiers use quantile cut points of real values, so households with the same value always share a tier:
+`r grep("trip tiers", readLines(file.path(out, "summary.txt")), value = TRUE)`.
+
 ```{r logrank}
 kable(rd("logrank_tests.csv"), digits = 4, caption = "Log-rank tests")
 ```
