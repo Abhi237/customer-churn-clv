@@ -1,0 +1,4 @@
+product_id,manufacturer_id,department,brand,product_category,product_type,package_size
+p_groc,1,GROCERY,National,SNACKS,CHIPS,10 OZ
+p_prod,2,PRODUCE,Private,FRUIT,APPLES,1 LB
+p_fuel,3,FUEL,National,GAS,REGULAR,
