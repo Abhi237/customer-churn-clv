@@ -1,76 +1,88 @@
-# Retention Strategy Memo - Online Retail II
+# Retention Strategy Memo - US Grocery Loyalty Panel
 
-**To:** Commercial leadership | **From:** Customer Analytics | **Scoring date:** 2011-09-01 (back-test)
-**Basis:** UCI Online Retail II, 2009-12-01 to 2011-12-09; every figure below is computed by the
-pipeline in this repository. Items marked **ASSUMED** are scenario inputs, not observed results.
+**To:** Commercial leadership | **From:** Customer Analytics | **Scoring date:** 2017-10-01 (back-test)
+**Basis:** Complete Journey 2.0 (84.51, CC0), 2,469 loyalty-card households, 2017-01-01 to
+2017-12-31. Every figure is computed by the pipeline in this repository. Items marked **ASSUMED** are
+scenario inputs, not observed results. **Churn is a proxy**: no purchase in the 90 days after the
+cutoff, not an observed cancellation.
 
 ## 1. The decision
-Which active customers should receive retention spend in the next quarter, and how much is their future
-purchasing plausibly worth?
+Which active households should receive retention spend (coupons, outreach) next quarter, and how much is their
+future spend plausibly worth?
 
 ## 2. What the data says (observed)
-* **5,852 identifiable customers** placed 36,592 clean invoices worth
-  GBP 16.82m. 28% bought only once.
-* **Activation is the biggest leak.** Only 41% of new customers made a repeat purchase
-  within 90 days of their first order; 4.1% were still active without any 90-day lapse
-  after a year (Kaplan-Meier). Customers whose first order was in the top value quartile stayed active at
-  90 days at 26% vs 12% for the bottom quartile; each 1-unit increase in log first-order value cuts the
-  lapse hazard by 12% (stratified Cox HR 0.88, 95% CI 0.84-0.92).
-* **Churn proxy** (no purchase in the 90 days after the scoring date - a behavioural proxy, not a cancellation):
-  50.5% of the 4,323 customers active in the prior year at 2011-09-01.
+* 2,469 households made 155,368 clean baskets worth $4.60M across
+  457 stores. The top 10% of households account for 35% of spend.
+* Store discounts are 14.7% of shelf value and coupon discounts only
+  0.57%; 6.3% of baskets use a coupon.
+* Households rarely go quiet: 93.4% remain lapse-free at day 90 (Kaplan-Meier, landmark
+  design). Baseline trip frequency separates them sharply: day-90 survival is 86.8% for the lowest
+  trip tier and 99.7% for the highest (Cox hazard ratio per log trip 0.25, 95% CI
+  0.19 to 0.34; the proportional-hazards test flags this effect as time-varying).
 
-![](figures/km_overall.png) ![](figures/roc_pr_test.png)
+## 3. Churn-proxy model (out-of-time test, 2,314 households, 89 positives)
+* Prevalence is 3.8% (train 3.3%, validation
+  4.4%).
+* Test ROC-AUC with 95% bootstrap intervals: recency rule 0.793 (0.741 to
+  0.847), RFM heuristic 0.806, logistic regression 0.841
+  (0.803 to 0.875), LightGBM
+  0.843 (0.804 to 0.878).
+  PR-AUC: 0.144, 0.123, 0.152, 0.161 against a 0.038 base rate.
+* **LightGBM is not distinguishable from logistic regression**: paired-bootstrap ROC-AUC difference +0.002
+  (-0.012 to +0.017). Logistic regression beats the RFM heuristic by +0.034
+  (+0.015 to +0.055). In the rolling backtest LightGBM matches or beats logistic regression at
+  5 of 5 cutoffs.
+* Final model: LightGBM + platt (best validation PR-AUC); top-decile lift 4.03x. **Calibration did not improve
+  Brier on test**: raw LightGBM 0.0345, final 0.0355. Mean predicted risk is
+  3.1% raw and 4.4% after Platt scaling versus
+  3.8% observed; calibration slope 0.78. Isotonic was ineligible with
+  100 validation positives. Use scores for ranking.
+* Main drivers (mean |SHAP|): trips per week, trips 42d, trips 28d, share fresh.
 
-## 3. How well can we predict it (out-of-time test, 2011-09-01)
-| Approach | ROC-AUC | PR-AUC | Lift, top 10% |
-|---|---|---|---|
-| Recency rule (baseline) | 0.706 | 0.670 | 1.45x |
-| RFM heuristic (baseline) | 0.750 | 0.715 | 1.64x |
-| **Logistic regression + platt** (selected on validation) | **0.769** | **0.737** | **1.64x** |
+## 4. Lifetime value (BG/NBD + Gamma-Gamma, 182-day holdout)
+Predicted holdout shopping days are 64,059 versus 63,212 actual
+(+1.3%); spend $2.30M versus
+$2.29M (+0.1%). Household-level MAE is
+8.82 shopping days against 8.96 for a naive carried-forward rate: the model is
+right in aggregate and for ranking (Spearman 0.81), but only slightly better per household.
 
-The model ranks risk better than the baselines, but the gain over a simple RFM score is modest
-(+0.019 ROC-AUC). **Calibration caveat:** at this pre-Christmas scoring date the model
-predicted an average churn risk of 63% versus 50% observed, consistent with
-seasonal Q4 demand lowering churn (training windows mix seasons). Use the scores to *rank* customers; re-calibrate on the latest season before using
-them as absolute probabilities.
+## 5. Coupons and campaigns (observational, no causal claim)
+* 27 campaigns reached 1,559 households; 410
+  redeemed at least one coupon. Type A campaigns reach about 1,076 households each
+  and have a 16.6% redeeming share of targeted, versus
+  6.5% for Type B.
+* Households targeted in the test window churn less (naive gap -5.1 points), but within
+  model risk tiers the gap is -0.1 points: targeting reached heavier shoppers
+  (largest baseline standardised difference 1.42). There is no holdout, so the data
+  cannot say whether campaigns work.
 
-**Value forecast (BG/NBD + Gamma-Gamma):** on a 191-day holdout the model predicted
-8,003 repeat purchases vs 8,065 actual and
-GBP 3.97m spend vs GBP 4.52m actual (spend under-forecast by
-12%; the holdout contains the Q4 peak and the model has no
-seasonality). The top 10% of customers by
-predicted value delivered 64% of actual holdout spend.
+## 6. Value x risk targeting (ASSUMED ROI)
+* 392 High value / Low risk households hold 45% of predicted
+  CLV (observed churn 0.5%): protect with service, not discounts. Only
+  71 households are both high value and at elevated risk.
+* Most risk sits in Low value households (710 High risk, observed churn
+  10.7%).
+* **ASSUMED** 10% relative churn reduction, 25% margin,
+  $2.00 per contact: the rule targets 116 households
+  (5.0%) for expected net value $190 on
+  $232 of cost; contacting everyone would be -$3,278.
+  Across the ASSUMED sensitivity grid net value ranges from $0 to
+  $4,545. These are scenarios, not forecasts.
 
-## 4. Value x risk segments at 2011-09-01
-* **Protect - High value / Low risk:** 794 customers, GBP 4.50m predicted 12-month
-  CLV (68% of the total). Observed next-90-day churn was only
-  12% and they generated 68% of next-quarter revenue.
-  Service, not discounts.
-* **Save - High value at Medium/High risk:** 71 customers, GBP 172k
-  CLV; observed churn 48%.
-  Highest priority for personal outreach.
-* **Grow - Mid value at Medium/High risk:** 749 customers, GBP 677k
-  CLV (Mid/Medium alone: 633). Low-cost automated win-back.
-* **Low value / High risk:** 1,318 customers, mean CLV GBP 293:
-  email-only or no spend.
+## 7. Demographics (partial coverage)
+Only 801 of 2,469 households (32%) have demographics. They are
+heavier shoppers (median spend to date $1,981 versus
+$579) and only 2 of
+801 scored covered households went quiet, so group churn rates are not informative.
 
-![](figures/targeting_matrix.png)
+## 8. Recommendation and next step
+Protect high-value households with service; do not spend discounts where risk is low. Before any ROI claim, run a
+randomised holdout campaign stratified by risk and value tier and replace the ASSUMED uplift with a measured one.
 
-## 5. Recommended targeting rule (scenario - ASSUMED inputs)
-Contact a customer when *P(churn) x uplift x CLV(12m) x margin > contact cost*.
-With **ASSUMED** 10% relative churn reduction, 30% margin and GBP 5
-per contact, the rule selects 3,657 customers (85%), costing
-GBP 18k with an expected net value of GBP 35k. Under a conservative
-scenario (5% uplift, GBP 10 contact) it selects 690
-customers for GBP 3,906. Across the 48-scenario grid the expected net value ranges
-from GBP 325 to GBP 219k. **These are not
-observed impacts**; the probabilities feeding them are over-stated at this date (section 3).
+## 9. Limitations
+One calendar year, one retailer, 2,469 loyalty-card households (card-less purchases are invisible);
+about 89 churn-proxy events per cutoff so model differences are within noise; the label is a
+proxy; partial demographics; BG/NBD has no seasonality and 12-month CLV extrapolates beyond one observed year;
+this extract contains no returns.
 
-## 6. Next steps
-1. Run a randomised hold-out test (e.g. 20% control) in the Save and Grow cells to *measure* uplift; replace the
-   assumption with the measured value.
-2. Launch a second-order activation programme for new customers (the day-1 lapse is the largest loss).
-3. Re-score monthly with `churn score --cutoff <date>` and re-calibrate on the most recent comparable season.
-
-*Limitations: wholesale-heavy, 91% UK customer base; 2 years of history (one Q4 per
-split); 243,007 raw lines lacked a customer ID and are excluded; churn is a proxy.*
+![Value x risk matrix](figures/targeting_matrix.png) ![Campaign outcomes](figures/campaign_outcomes.png)

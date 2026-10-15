@@ -1,9 +1,11 @@
-# Customer Lifecycle, Churn & Customer Lifetime Value
+# Using calibrated gradient boosting and BG/NBD models to forecast household churn and lifetime value on a US grocery loyalty panel
 
-> **Outcome:** a reproducible pipeline that ranks 4,323 active wholesale customers by 90-day churn risk
-> (ROC-AUC 0.769 out-of-time, top-decile lift 1.64x) and by predicted 12-month value (BG/NBD + Gamma-Gamma
-> forecast holdout purchases within 1%), and turns both into a value x risk targeting rule whose
-> economics are shown as an explicit, assumption-driven sensitivity range - not a promised impact.
+> **Outcome:** a reproducible pipeline that ranks 2,314 active grocery households by 90-day churn-proxy risk
+> (out-of-time ROC-AUC 0.843, top-decile lift 4.03x, with only 89 test positives so intervals are wide) and by
+> predicted 12-month value (BG/NBD + Gamma-Gamma forecast holdout shopping days within 1.3%), and turns both
+> into a value x risk targeting rule whose economics are shown as an explicit, **ASSUMED**-parameter scenario,
+> not a promised impact. **Churn here is a proxy** (no purchase in the 90 days after a cutoff), not an observed
+> cancellation.
 
 [![CI](https://github.com/Abhi237/customer-churn-clv/actions/workflows/ci.yml/badge.svg)](https://github.com/Abhi237/customer-churn-clv/actions/workflows/ci.yml)
 · SQL (DuckDB) · Python (scikit-learn, LightGBM, SHAP, lifetimes) · R (survival, survminer, Quarto)
@@ -11,254 +13,283 @@
 | | |
 |---|---|
 | ![Targeting matrix](docs/figures/targeting_matrix.png) | ![Gains & lift](docs/figures/gains_lift_test.png) |
-| ![CLV holdout](docs/figures/clv_holdout_validation.png) | ![KM by first-order value](docs/figures/km_by_first_value_tier.png) |
+| ![CLV holdout](docs/figures/clv_holdout_validation.png) | ![KM by baseline trips](docs/figures/km_by_trip_tier.png) |
 
 **Deliverables:** [executive memo (PDF)](docs/retention_memo.pdf) · [memo (md)](docs/retention_memo.md) ·
 [survival report (HTML)](reports/survival_report.html) · [EDA notebook](notebooks/01_eda.ipynb) ·
 [model notebook](notebooks/02_model_walkthrough.ipynb) · [data dictionary](docs/data_dictionary.md) ·
-[data model](docs/data_model.md) · [architecture](docs/architecture.md)
+[data model](docs/data_model.md) · [architecture](docs/architecture.md) · [data notes](data/README.md)
 
 ## Interactive app
-A multipage Streamlit app (`app/streamlit_app.py`) presents the whole project for stakeholders. It reads
-**only** compact, aggregated artifacts committed in `app/data/` (~1.4 MB: summaries, curves, cohort/survival
-tables and the 4,323 scored customers with features, probabilities, CLV, segments and precomputed SHAP values).
-No raw transactions, no pipeline and no ML libraries are needed at deploy time.
+A multipage Streamlit app (`app/streamlit_app.py`, light theme) presents the project for stakeholders. It reads
+**only** compact aggregated artifacts committed in `app/data/` (about 1.1 MB: summaries, curves, cohort and
+survival tables and the 2,314 scored households with features, probabilities, CLV, segments and precomputed
+SHAP values). No raw transactions, pipeline or ML libraries are needed at deploy time. The hosted app is
+deployed from `main`; it shows this grocery version once this branch is merged.
 
 | Page | What it shows |
 |---|---|
-| Executive summary | business question, KPI cards, value x risk matrix, key recommendation |
-| Data & cleaning | pipeline graph, cleaning waterfall, data-quality checks |
-| Cohorts & lifecycle | interactive retention heatmap and curves, rolling 30/60/90-day activity, RFM |
-| Churn model | metrics vs baselines, ROC/PR, calibration, lift/gains, backtest, SHAP + customer lookup |
-| Customer lifetime value | BG/NBD + Gamma-Gamma holdout validation, CLV distribution and concentration |
-| Survival analysis | KM curves by segment with CIs, Cox hazard-ratio forest plot, `cox.zph` notes |
-| Retention targeting simulator | sliders for **ASSUMED** uplift/margin/cost with live ROI, sensitivity, target list |
-| Methodology & limitations | validation design, leakage controls, churn-proxy and calibration caveats |
+| Executive summary | business question, KPI cards, value x risk matrix, recommendation |
+| Data and cleaning | pipeline graph, cleaning waterfall, data-quality checks |
+| Cohorts and shopping behavior | retention heatmap, rolling activity, department mix, RFM |
+| Churn model | metrics vs baselines with CIs, ROC/PR, calibration, lift, backtest, SHAP and household lookup |
+| Household lifetime value | BG/NBD + Gamma-Gamma holdout validation, CLV distribution and concentration |
+| Survival analysis | Kaplan-Meier by segment, Cox hazard ratios, `cox.zph` checks (computed in R) |
+| Coupons and campaigns | exposure and redemption, balance checks, observational association (no causal claim) |
+| Demographics (partial) | breakout for the 801 households with demographics, with coverage flagged |
+| Retention targeting simulator | sliders for **ASSUMED** uplift, margin and cost with live ROI, sensitivity grid, target list |
+| Methodology and limitations | validation design, leakage controls, proxy-label and calibration caveats |
 
 ```bash
 make app-data        # refresh app/data/ from pipeline outputs
 make app             # http://localhost:8501
 ```
-**Deploy on Streamlit Community Cloud:** main file `app/streamlit_app.py`, Python 3.11 (3.10-3.12 supported);
-dependencies come from `app/requirements.txt` (streamlit, pandas, numpy, pyarrow, plotly). Theme:
-`.streamlit/config.toml`.
+**Deploy on Streamlit Community Cloud:** main file `app/streamlit_app.py`, Python 3.11; dependencies from
+`app/requirements.txt` (streamlit, pandas, numpy, pyarrow, plotly). Theme: `.streamlit/config.toml`.
 
 | | |
 |---|---|
 | ![Overview](docs/app_screenshots/01_overview.png) | ![Churn model](docs/app_screenshots/04_churn_model.png) |
-| ![Targeting simulator](docs/app_screenshots/07_targeting.png) | ![Survival](docs/app_screenshots/06_survival.png) |
+| ![Targeting simulator](docs/app_screenshots/09_targeting.png) | ![Campaigns](docs/app_screenshots/07_campaigns.png) |
 
-All eight page screenshots: [`docs/app_screenshots/`](docs/app_screenshots/).
+All ten page screenshots: [`docs/app_screenshots/`](docs/app_screenshots/).
 
 ---
 
-## 1. Situation & question
-A UK online gift wholesaler sells mostly to small retailers. There is no subscription, so customers never
-"cancel" - they just stop ordering. Commercial leadership asks:
+## 1. Situation and question
+A US grocery chain runs a loyalty card but no subscriptions, so households never "cancel": they simply stop
+shopping. Commercial leadership asks:
 
-> **Which customers should receive retention spend, and how much might their future purchases be worth?**
+> **Which active households should receive retention spend (coupons, outreach), and how much might their future
+> shopping be worth?**
 
-This is answered with three complementary lenses: a **churn-proxy classifier** (who is at risk in the next
-90 days), a **probabilistic CLV model** (what their future purchases are worth), and **survival analysis**
-(when customers lapse and what at acquisition predicts it).
+Three lenses answer it: a **churn-proxy classifier** (who is likely to be inactive over the next 90 days), a
+**probabilistic CLV model** (what their future spend is worth), and **survival analysis** (how long households
+stay active and what early behavior predicts it). A coupon/campaign analysis and a partial-coverage demographics
+breakout add context.
 
 ## 2. Data
 | | |
 |---|---|
-| Source | [UCI Online Retail II](https://archive.ics.uci.edu/dataset/502/online+retail+ii) (CC BY 4.0) - see [data/README.md](data/README.md) |
-| Period | 2009-12-01 to 2011-12-09 (two Excel sheets, concatenated) |
-| Raw size | 1,067,371 invoice lines, 53,628 invoice numbers, 5,942 customer IDs |
-| Clean grain | `fct_invoices`: one row per customer x purchase invoice - **36,592 invoices, 5,852 customers, GBP 16.82m revenue** (plus 17,584 cancellation lines worth GBP 464k kept separately as returns) |
-| Customer mix | 41 countries, 91% UK; 28% bought only once; top 10% of customers = 63.4% of revenue |
+| Source | 84.51 **Complete Journey 2.0** study data as redistributed by the R package [`completejourney`](https://github.com/bradleyboehmke/completejourney) v1.1.1 (**CC0 1.0**, public domain dedication). See [data/README.md](data/README.md) |
+| Period | calendar year 2017 (2017-01-01 to 2017-12-31) |
+| Raw size | 1,469,307 transaction lines, 155,848 baskets, 2,469 loyalty-card households, 457 stores, 92,331 products |
+| Clean grain | `fct_baskets`: one row per household x basket. **155,368 baskets, $4.60M spend, 127,320 shopping days** |
+| Mix | top 10% of households = 35.0% of spend; store discounts are 14.7% of shelf value, coupon discounts 0.57%; 6.3% of baskets use a coupon |
+| Campaigns | 27 campaigns (Types A, B, C) targeting 1,559 households; 2,102 redemptions by 410 households |
+| Demographics | only **801 of 2,469 households (32%)** (partial coverage; those households are heavier shoppers) |
 
-**Cleaning decisions** (`sql/02`, `sql/03`; counts from `dq_report`):
+Only loyalty-card purchases are observed (card-less shoppers are invisible), for one retailer and one year.
+
+**Cleaning decisions** (`sql/02`, `sql/03`; every count is in `dq_report` and `dq_cleaning_waterfall`):
 
 | Issue | Raw lines | Decision |
 |---|---|---|
-| Missing Customer ID | 243,007 | excluded - cannot be attributed to a lifecycle |
-| Exact duplicate lines (sheets overlap + repeats) | 34,335 | deduplicated (`ROW_NUMBER()`) |
-| Cancellations (`C` invoices) | 19,494 | kept as `fct_returns` (return features), never counted as purchases |
-| Negative qty on non-cancelled invoices (stock adjustments) | 3,457 | excluded |
-| Price <= 0 | 6,207 | excluded |
-| Non-product codes (POST, DOT, M, BANK CHARGES, AMAZONFEE, ...) | 5,834 | excluded (list in `config/config.yaml`) |
-| abs(quantity) > 10,000 (e.g. the 80,995-unit order) | 11 | excluded as data-entry outliers |
-| `A` bad-debt adjustments | 6 | excluded |
+| Empty lines (no sales value, no discount) | 5,859 | dropped |
+| Zero quantity with positive sales | 29 | dropped (not interpretable as units) |
+| Zero price, no discount | 263 | dropped |
+| Free-item lines ($0 sales but discounted) | 2,143 | kept (real redemptions) |
+| Coupon-only lines | 2,981 | kept |
+| Quantity above 1,000 (13,494 lines, 11,818 of them fuel) | 13,494 | units set to NULL, dollars kept |
+| Lines above $500 | 2 | kept and flagged |
+| Baskets with a non-positive total (not purchases) | 480 baskets | excluded from purchase counts |
+| Negative quantity or sales value (returns) | 0 | **this extract contains no returns**; return features were removed |
+| Exact duplicate lines, missing IDs | 0 | none found |
 
-**Caveats:** wholesale buyers (bulk, irregular orders); only two years so each season appears at most twice;
-customers first seen in Dec-2009 may be existing customers (left-truncation); Q4 is the peak season.
+**Caveats:** one year only, so each season appears once and "tenure" is bounded by the window; 1,983 of 2,469
+households make their first observed purchase in January 2017 (left-truncated); partial demographics; card-less purchases are
+not observed.
 
 ## 3. SQL model (DuckDB, ANSI/Postgres-friendly)
 Numbered, idempotent scripts run in order by `churn sql`:
 
 | Script | Output |
 |---|---|
-| `01_stage_raw.sql` | typed staging table |
-| `02_data_quality.sql` | `dq_report` (one row per check) |
+| `01_stage_raw.sql` | typed staging tables (money as DECIMAL) |
+| `02_data_quality.sql` | `dq_report`, department groups |
 | `03_clean_transactions.sql` | `fct_lines`, `dq_cleaning_waterfall` |
-| `04_invoices.sql` | `fct_invoices`, `fct_returns`, `dim_customers` |
-| `05_cohorts.sql` | monthly acquisition cohorts, `cohort_retention` matrix |
-| `06_rolling_activity.sql` | rolling 30/60/90-day activity (`RANGE ... INTERVAL` frames), `monthly_active_customers` |
-| `07_rfm.sql` | RFM quintiles (`NTILE`) + segments |
-| `08_survival.sql` | time-to-first-90-day-lapse dataset (`LEAD` gaps) for R |
+| `04_baskets.sql` | `fct_baskets`, `fct_days`, `fct_returns`, `dim_households` |
+| `05_cohorts.sql` | monthly entry cohorts, `cohort_retention` |
+| `06_rolling_activity.sql` | rolling 30/60/90-day activity (`RANGE ... INTERVAL` frames), `monthly_active_households` |
+| `07_rfm.sql` | RFM quintiles (`NTILE`) and segments |
+| `08_campaigns.sql` | `campaign_exposure`, `coupon_redemptions_clean`, `dim_campaigns` |
+| `09_survival.sql` | landmark time-to-first-90-day-lapse dataset (`LEAD` gaps) for R |
 
-Example - rolling activity with window frames:
+Point-in-time features and the label live in `src/churn_clv/features.py`:
 ```sql
-SELECT customer_id, invoice_date,
-       SUM(n_invoices) OVER w90 AS invoices_90d,
-       SUM(revenue)    OVER w90 AS revenue_90d,
-       invoice_date - LAG(invoice_date) OVER (PARTITION BY customer_id ORDER BY invoice_date) AS days_since_prev
-FROM daily
-WINDOW w90 AS (PARTITION BY customer_id ORDER BY invoice_date
-               RANGE BETWEEN INTERVAL 89 DAY PRECEDING AND CURRENT ROW);
-```
-Example - point-in-time label (in `src/churn_clv/features.py`):
-```sql
--- features: invoice_date <  cutoff          label: cutoff <= invoice_date < cutoff + 90
-CASE WHEN f.customer_id IS NULL THEN 1 ELSE 0 END AS churned   -- churn PROXY
+-- features: basket_date <  cutoff          label: cutoff <= basket_date < cutoff + 90
+CASE WHEN f.household_id IS NULL THEN 1 ELSE 0 END AS churned   -- churn PROXY
 ```
 ![Cohort retention](docs/figures/cohort_retention_heatmap.png)
 
-Month-1 retention averages 21.0% across cohorts.
-
 ## 4. Modelling (Python) and validation (R)
-**Churn proxy.** `churned = 1` if a customer active in the prior 365 days places **no invoice in the 90 days
-after the cutoff**. This is a *behavioural proxy* for churn, not an observed cancellation.
+**Churn proxy.** `churned = 1` if a household that shopped in the 90 days before the cutoff has **no shopping
+day in the 90 days after it**. This is a behavioral proxy, not an observed cancellation.
 
-**Features** (19, all computed strictly before the cutoff): recency, tenure, frequency, monetary, AOV,
-30/90/180-day invoice and revenue windows, active months in last 12, inter-purchase gap mean/std,
-recency-to-gap ratio, product breadth, returns count/ratio, UK flag ([dictionary](docs/data_dictionary.md)).
+**Features** (30, all computed strictly before the cutoff, see [dictionary](docs/data_dictionary.md)): RFM and
+cadence (recency, trips and spend per week, 28/42-day windows, inter-purchase gaps), basket behavior (basket
+spend, units, lines), department mix (fresh, grocery, fuel, health and beauty, private label), discount and
+coupon use, store loyalty (stores visited, top-store share) and campaign exposure and redemption (90-day window).
 
-**Models:** recency-rule baseline, RFM-score baseline, logistic regression (log + standardise), LightGBM
-(4-config grid chosen on validation). Calibration: Platt vs isotonic chosen by 5-fold cross-fitted Brier on
-the validation snapshot. The final model is the ML model with the best **validation** PR-AUC.
+**Design rule for a 12-month panel.** Cumulative tenure, frequency and total spend grow mechanically with the
+calendar, which caused a clear covariate shift between train and test cutoffs in an earlier version. Model
+inputs are therefore only rates, shares and fixed windows (at most 42 days; campaigns 90 days). The cumulative
+quantities are kept in the snapshots as descriptive columns only. An earlier version with cumulative features scored
+higher on the test cutoff (ROC-AUC 0.862 and 0.852 for the two models) but was dropped, because those features
+drift with the calendar and the higher score cannot be trusted to carry forward.
 
-**CLV:** BG/NBD (purchase frequency, daily periods) + Gamma-Gamma (spend) with `lifetimes`, validated on a
-calibration (to 2011-06-01) / 191-day holdout split; 12-month discounted CLV (1%/month) scored at the
-test cutoff using only pre-cutoff data.
+**Models:** recency-rule baseline, RFM-heuristic baseline (on weekly rates), logistic regression, LightGBM (small
+grid, chosen by validation PR-AUC). Calibration: Platt, isotonic or none, chosen by 5-fold CV Brier on the
+validation snapshot.
 
-**R survival layer** ([report](reports/survival_report.html), `R/survival_analysis.R`): Kaplan-Meier time to
-first 90-day lapse, log-rank tests by first-order value tier, country and acquisition quarter, Cox PH with
-`cox.zph` checks and a stratified remedy. Covariates are fixed at acquisition to avoid immortal-time bias.
+**CLV:** BG/NBD (shopping days, daily periods, one transaction per household-day) and Gamma-Gamma (spend per shopping day) with `lifetimes`, validated on a 182-day
+calibration / 182-day holdout split and scored at the test cutoff using only pre-cutoff data; 12-month discounted
+CLV (1% per month) extrapolates beyond the one observed year. A NaN-safe `expected_purchases` replaces the
+`lifetimes` one, which takes the log of a negative hyp2f1 term for some parameter and count combinations.
 
-## 5. Validation design, baselines, metrics, sensitivity
+**R survival layer** ([report](reports/survival_report.html), `R/survival_analysis.R`): landmark design with the
+origin at a household's first observed purchase, covariates from the first 28 days only (avoids immortal-time
+bias), event = first gap over 90 days, censored 90 days before the end of data. Kaplan-Meier, log-rank tests,
+Cox with `cox.zph` and a stratified remedy.
+
+## 5. Validation design
 ```
-train cutoffs: 2010-06-01, 2010-09-01, 2010-12-01, 2011-03-01  (14,482 customer-snapshots)
-validation:    2011-06-01  (tuning + calibration, 4,324 customers)
-test:          2011-09-01  (reported once, 4,323 customers)
+train cutoffs: 2017-02-12, 02-26, 03-12, 03-26   (8,704 household-snapshots, 289 positives)
+validation:    2017-07-02   (model selection + calibration; 2,297 households, 100 positives)
+test:          2017-10-01   (reported once; 2,314 households, 89 positives)
 ```
-Each label window closes before the next split's cutoff. A rolling-origin backtest retrains at four
-evaluation cutoffs. `tests/test_features_leakage.py` proves features are byte-identical when every
-post-cutoff row is altered or dropped.
+Each label window closes before the next split's cutoff (`validate_split_design` raises otherwise). A
+rolling-origin backtest retrains at five evaluation cutoffs using only snapshots whose labels had closed.
+`tests/test_features_leakage.py` proves features are identical when every post-cutoff row is altered or dropped.
 
-## 6. Results (all computed by `make all`)
-**Churn-proxy rate:** 56.9% train (ranging 41.7%-66.8% by cutoff), 63.4% validation, **50.5% test**.
+## 6. Results (all computed by `make pipeline`)
+**Churn-proxy prevalence:** 3.3% train (2.8% to 3.9% by cutoff), 4.4% validation, 3.8% test. Few positives
+mean wide intervals, so differences among the better models are within noise.
 
-**Test cutoff (2011-09-01), out-of-time:**
+**Test cutoff (2017-10-01), out-of-time, 95% bootstrap intervals for ROC-AUC:**
 
-| Model | ROC-AUC | PR-AUC | Brier | ECE | Lift top 10% | Churners captured in top 30% |
-|---|---|---|---|---|---|---|
-| Recency rule | 0.706 | 0.670 | 0.235 | 0.135 | 1.45x | 42.2% |
-| RFM heuristic | 0.750 | 0.715 | 0.204 | 0.044 | 1.64x | 44.9% |
-| Logistic regression (raw) | **0.769** | **0.737** | **0.202** | 0.093 | **1.64x** | 44.2% |
-| **Logistic regression + Platt** (final) | 0.769 | 0.737 | 0.209 | 0.123 | 1.64x | 44.2% |
-| LightGBM (raw) | 0.765 | 0.727 | 0.211 | 0.128 | 1.54x | 44.4% |
-| LightGBM + Platt | 0.765 | 0.727 | 0.214 | 0.133 | 1.54x | 44.4% |
+| Model | ROC-AUC (95% CI) | PR-AUC | Brier | ECE | Lift top 10% |
+|---|---|---|---|---|---|
+| Recency rule | 0.793 (0.741 to 0.847) | 0.144 | 0.0342 | 0.001 | 4.82x |
+| RFM heuristic | 0.806 (0.764 to 0.849) | 0.123 | 0.0347 | 0.003 | 4.03x |
+| Logistic regression (raw) | 0.841 (0.803 to 0.875) | 0.152 | 0.0347 | 0.012 | 4.15x |
+| LightGBM (raw) | 0.843 (0.804 to 0.878) | 0.161 | 0.0345 | 0.011 | 4.03x |
+| **LightGBM + Platt (final)** | 0.843 (0.804 to 0.878) | 0.161 | 0.0355 | 0.015 | 4.03x |
 
-**Rolling backtest ROC-AUC** (LogReg / LightGBM / RFM / Recency): 2010-12: 0.789 / 0.784 / 0.774 / 0.701 ·
-2011-03: 0.776 / 0.762 / 0.771 / 0.712 · 2011-06: 0.809 / 0.805 / 0.785 / 0.743 · 2011-09: 0.769 / 0.769 /
-0.752 / 0.706. Logistic regression is best at every cutoff (tied with LightGBM at 2011-09); LightGBM adds nothing over a well-specified linear model
-on 19 aggregated features. The lift over RFM is consistent but modest (+0.005 to +0.024 ROC-AUC).
+The base rate is 0.038 (PR-AUC baseline) and a Brier score of 0.037 is what a constant prediction scores, so the
+Brier differences are tiny. **LightGBM is not distinguishable from logistic regression** (paired-bootstrap
+ROC-AUC difference +0.002, 95% CI -0.012 to +0.017). Logistic regression beats the RFM heuristic by +0.034
+(+0.015 to +0.055).
 
-**Calibration - the honest finding.** Platt scaling was chosen on validation (CV Brier 0.1640 vs isotonic
-0.1650) and is well calibrated there, but at the September test cutoff every model **over-predicts churn**:
-mean predicted 62.8% vs observed 50.5% for the final model. The Sep-Nov label window is peak season, so
-churn is structurally lower; post-hoc calibration on June made it slightly worse (Brier 0.202 -> 0.209). A
-same-season prior adjustment was considered and rejected because it failed on the validation cutoff. Use scores
-to **rank**; re-calibrate on the latest comparable season before reading them as probabilities.
+**Rolling backtest ROC-AUC** (LightGBM / logistic regression / RFM / recency): 2017-06-18: 0.885 / 0.863 / 0.854 /
+0.793; 2017-07-16: 0.907 / 0.900 / 0.888 / 0.849; 2017-08-13: 0.901 / 0.895 / 0.888 / 0.838; 2017-09-10: 0.881 /
+0.869 / 0.848 / 0.836; 2017-10-01: 0.858 / 0.855 / 0.805 / 0.798. LightGBM matches or beats logistic regression at
+5 of 5 cutoffs, by 0.003 to 0.022; both beat the RFM heuristic and the recency rule at every cutoff. (The
+2017-10-01 backtest row retrains on all snapshots whose labels closed, so it differs slightly from the headline
+test row, which uses the train cutoffs only.)
+
+**Calibration, honestly.** Platt scaling was chosen on validation, but it did **not improve test Brier**
+(raw LightGBM 0.0345, final 0.0355). The final model's mean predicted risk is 4.4% against 3.8% observed
+(raw LightGBM: 3.1%), with calibration slope 0.78. An isotonic calibrator overfit the 100 validation positives on
+the first run (test slope 0.41, 47.6% of predictions exactly 0), so isotonic is only eligible with at least
+1,000 validation positives (`churn.min_positives_isotonic`). **That rule was added after seeing a test result**
+and is disclosed here as such. Use the scores for ranking, and re-calibrate on fresh data before reading them as
+probabilities.
 ![Reliability](docs/figures/reliability_test.png)
 
-**Top SHAP drivers** (LightGBM, mean |SHAP|, log-odds): active months in last 12 (0.31), invoices in last
-180 days (0.19), revenue in last 180 days (0.18), mean inter-purchase gap (0.16), tenure (0.14),
-recency-to-gap ratio (0.09). Logistic-regression SHAP is dominated by monetary total and frequency with
-opposing signs (correlated features), so the tree SHAP is the cleaner global view.
+**Top SHAP drivers** (LightGBM, mean |SHAP|, log-odds): trips per week (0.49), trips in the last 42 days (0.27),
+trips in the last 28 days (0.15), fresh share of spend (0.13), spend in the last 28 days (0.12), top-store share
+(0.11). Recent shopping cadence dominates; campaign and coupon features rank 19th or lower (mean |SHAP| below 0.01) and the redemption features are unused by the fitted trees.
 ![SHAP](docs/figures/shap_beeswarm.png)
 
-**CLV holdout validation (191 days, 4,912 customers):** predicted 8,003 vs actual 8,065 repeat purchases
-(-0.8%); per-customer correlation 0.85, MAE 1.08 purchases. Spend: predicted GBP 3.97m vs actual GBP 4.52m
-(-12%; under-forecast concentrated in the top decile; the holdout contains the Q4 peak and BG/NBD has no
-seasonality); Pearson 0.92, Spearman 0.59. The top 10% by predicted spend delivered 63.7% of actual holdout spend.
-Gamma-Gamma fitted q = 0.89 < 1 (very heavy-tailed spend), so the population-mean AOV is undefined; zero-repeat
-customers get the pooled empirical repeat AOV instead (documented in `clv.py`).
+**CLV holdout validation (182 days, 2,394 households):** predicted 64,059 vs actual 63,212 shopping days (+1.3%);
+spend $2.30M predicted vs $2.29M actual (+0.1%). Household-level MAE is 8.82 shopping days against 8.96 for a
+naive carried-forward rate, and Spearman is 0.81: the model is right in aggregate and for ranking, but only
+marginally better per household than the naive rate. A 13-week holdout calibrated at the test cutoff gives MAE
+4.53 vs 4.63 naive. BG/NBD has no seasonality.
 
-**Targeting matrix at 2011-09-01** (risk = tertiles of calibrated churn probability; value = CLV
-<50% / 50-80% / top 20%), with *observed* next-90-day churn:
+**Campaigns (observational).** Households targeted by a campaign in the test window churn less (naive gap -5.1
+points) but within model risk tiers the gap is -0.1 points: targeting reached heavier shoppers (largest baseline
+standardized mean difference 1.42). With no holdout group, the data cannot say whether campaigns work. Type A
+campaigns reach about 1,076 households each with a 16.6% redeeming share of targeted, against 6.5% for Type B.
+
+**Targeting matrix at 2017-10-01** (risk = tertiles of churn probability, value = CLV below 50% / 50 to 80% /
+top 20%), with the *observed* next-90-day churn-proxy rate:
 
 | Value \ Risk | Low | Medium | High |
 |---|---|---|---|
-| High | 794 (GBP 4.50m CLV, observed churn 12%) | 64 (GBP 157k, 48%) | 7 (GBP 14k, 43%) |
-| Mid | 547 (GBP 583k, 28%) | 633 (GBP 592k, 52%) | 116 (GBP 86k, 66%) |
-| Low | 100 (GBP 42k, 43%) | 744 (GBP 257k, 62%) | 1,318 (GBP 386k, 75%) |
+| High | 392 ($1.88M CLV, 0.5%) | 68 ($312K, 0.0%) | 3 ($12K, 0.0%) |
+| Mid | 344 ($714K, 0.6%) | 292 ($517K, 1.0%) | 58 ($99K, 1.7%) |
+| Low | 35 ($38K, 0.0%) | 412 ($325K, 1.2%) | 710 ($320K, 10.7%) |
 
-**ROI rule (ASSUMED parameters):** contact if `P(churn) x uplift x CLV12m x margin > cost`. Base case
-(**assumed** 10% relative churn reduction, 30% margin, GBP 5/contact) targets 3,657 customers (85%) at
-GBP 18.3k for an expected GBP 35.5k net. Over the 48-scenario grid (uplift 5-30%, margin 20-40%, cost GBP 1-20)
-the targeted count ranges 32-4,311 and expected net value GBP 0.3k-219k. **These are scenario
-calculations, not measured impact,** and they inherit the over-predicted churn probabilities.
+**ROI rule (ASSUMED parameters):** contact if `P(churn) x uplift x CLV12m x margin > cost`. Base case, with an
+**ASSUMED** 10% relative churn reduction, 25% gross margin and $2.00 per contact, targets 116 households (5.0%)
+for **$232** of cost and an expected net value of **$190**; contacting every household would be -$3,278. Across
+the ASSUMED sensitivity grid net value ranges from $0 to $4,545. These are scenarios, not measured impact.
 ![Sensitivity](docs/figures/targeting_sensitivity.png)
 
-**Survival (R; 4,305 customers acquired 2010-01 onwards, 92.8% with an observed lapse):**
-* Only **40.9%** of new customers return within 90 days of their first order; 19.2% are still lapse-free at day
-  90 and 4.1% at day 365 (KM).
-* Log-rank: first-order value tier chi2 = 92.8 (p = 5.5e-20); acquisition quarter chi2 = 96.5 (p = 8.9e-21);
-  country group chi2 = 13.8 (p = 0.008). Day-90 lapse-free share: 25.8% for the top first-order-value quartile
-  vs 12.2% for the bottom.
-* Cox PH (concordance 0.60): HR 0.88 per log-unit of first-order value (95% CI 0.84-0.92), HR 0.92 per
-  log-unit of first-order product count; Q4 acquisitions lapse faster (HR 1.51 vs Q1).
-* `cox.zph`: acquisition quarter violates PH (p = 0.001; global p = 0.035). Stratifying on quarter fixes it
-  (global p = 0.83) with unchanged HRs (first-order value HR 0.88). Including the left-truncated Dec-2009 cohort
-  moves the value HR to 0.83.
+**Survival (R; 2,278 households, 297 lapse events, 157 excluded for lapsing before the landmark and 34 with no
+time at risk):** 93.4% are lapse-free at day 90 and 86.7% at day 240 (Kaplan-Meier); the median is not reached.
+Log-rank tests are significant for baseline trip tier (chi-square 187.7, p = 1.7e-41), basket size, coupon use and
+entry period. Cox concordance is 0.775: the hazard of lapsing falls with baseline trips (HR 0.25 per log trip,
+95% CI 0.19 to 0.34) and basket spend (HR 0.80), and coupon users lapse less (HR 0.56, CI 0.36 to 0.89;
+association, not an effect of coupons). `cox.zph` flags baseline trips as time-varying (p = 0.008); stratifying on
+entry group leaves the global test borderline (p = 0.068).
+
+**Demographics (partial).** The 801 covered households are heavier shoppers (median spend to date $1,981 vs $579
+for the rest) and only 2 of 801 scored covered households went quiet in the test window, so group churn rates
+are not informative and the page shows behavior and CLV profiles instead.
 
 ## 7. Recommended actions, trade-offs, limitations
-1. **Protect the 794 High-value / Low-risk customers** (68% of predicted CLV and 68% of next-quarter revenue)
-   with service, not discounts - discounting customers who would stay anyway wastes margin.
-2. **Personal outreach to the 71 High-value / Medium-High-risk customers** and **automated win-back for the 749
-   Mid-value at-risk customers** - with a randomised control group so uplift is *measured*.
-3. **Fix activation:** 59% of new customers lapse right after their first order; a second-order programme
-   tested on new customers targets the biggest leak.
-4. **Re-calibrate seasonally** and re-score monthly (`churn score --cutoff YYYY-MM-DD`).
+1. **Protect the 392 High value / Low risk households** (45% of predicted CLV) with service rather than
+   discounts: they almost never go quiet (observed 0.5%), so discounts would mostly subsidize shopping that
+   would happen anyway.
+2. **Run a randomized holdout campaign** stratified by risk and value tier before claiming any ROI. This data
+   has no treatment assignment, so uplift is assumed, not measured.
+3. **Treat high-risk, low-value households (710, observed churn 10.7%) as a low-cost automation question**
+   (cheap triggered offers), not a personal-outreach one: their CLV is small.
 
-*Trade-offs:* logistic regression was chosen over LightGBM for accuracy and interpretability; tertile risk
-bands are relative (stable under seasonal drift) but hide absolute-level shifts; the ROI rule is only as good
-as the uplift assumption. *Limitations:* churn is a proxy; no marketing/treatment data, so no causal uplift;
-one wholesaler, two years, 91% UK; missing-ID lines (23% of raw) excluded; CLV has no seasonality.
+*Trade-offs:* LightGBM is the final model for its small, consistent lead in the backtest but is not
+distinguishable from logistic regression on test; tertile risk bands are relative and hide absolute level.
+
+*Limitations:*
+* One calendar year, one retailer, 2,469 loyalty-card households; card-less purchases are invisible.
+* **Churn is a proxy** (no shopping day in 90 days), not an observed cancellation; a household can return later.
+* About 89 positives per cutoff, so model comparisons are noisy.
+* Calibration did not help on test; probabilities are approximate and should be used for ranking.
+* 12-month CLV extrapolates beyond the one observed year; BG/NBD has no seasonality.
+* Demographics cover 32% of households and are not representative; no returns appear in this extract.
+* Campaign analysis is observational; the ROI inputs are **ASSUMED**.
+* The isotonic eligibility rule was added after the first test result (see above).
 
 ## 8. How to run on a clean machine
-Requirements: Python 3.11, (optional) R >= 4.3 with `survival survminer dplyr readr ggplot2 knitr rmarkdown`
-(versions in `renv.lock`), Quarto >= 1.4 for HTML.
+Requirements: Python 3.11; R 4.3+ with `survival survminer dplyr readr ggplot2 knitr rmarkdown` and, for
+`make data`, the `completejourney` package (versions in `renv.lock`); Quarto 1.4+ for the HTML report.
 ```bash
 git clone https://github.com/Abhi237/customer-churn-clv.git && cd customer-churn-clv
-make setup          # venv + pinned requirements.txt + editable package
-make data           # download UCI zip, xlsx -> parquet       (~1-2 min)
-make sql            # DuckDB SQL model                          (~10 s)
-make train          # churn models, calibration, SHAP, CLV, targeting (~30 s)
-make report         # R survival (Quarto HTML or Rscript), memo PDF, executed notebooks
+git checkout complete-journey
+make setup          # venv + pinned requirements + editable package
+make data           # fetch the CC0 data and convert to CSV in data/raw/completejourney (needs R)
+make pipeline       # SQL, train, clv, target, campaigns, demographics, R survival
+make report         # Quarto survival report and memo PDF
+make app-data       # refresh app/data/
 make test           # ruff + pytest
-make app            # optional Streamlit explorer
+make app            # optional Streamlit app
 # or: make all
-churn score --cutoff 2011-12-10   # score any date with the saved calibrated model
 ```
-In R: `Rscript -e 'renv::restore()'` restores package versions. CI (`.github/workflows/ci.yml`) runs ruff and
-the full pytest suite on synthetic + edge-case fixtures (no raw data needed).
+`python scripts/download_data.py --from-csv DIR` uses CSVs you already have. The pipeline is deterministic: two
+consecutive `make pipeline` runs produce byte-identical artifacts. CI (`.github/workflows/ci.yml`) runs ruff and
+the full pytest suite on synthetic and edge-case fixtures; it never needs the raw data.
 
 ```
-├── config/config.yaml        all parameters (cutoffs, horizon, codes, ASSUMED targeting inputs)
-├── sql/01..08_*.sql          DuckDB SQL model
+├── config/config.yaml        all parameters (cutoffs, thresholds, ASSUMED targeting inputs)
+├── sql/01..09_*.sql          DuckDB SQL model
 ├── src/churn_clv/            package + `churn` CLI
-├── R/ , reports/             survival analysis (Rscript + Quarto report)
+├── R/ , reports/             data prep, survival analysis, Quarto report
 ├── notebooks/                executed EDA + model walkthrough
-├── tests/                    unit, data-contract, leakage, metric-regression tests
-├── docs/                     memo, dictionary, ER + pipeline diagrams, figures
-├── artifacts/                aggregated metrics (json/csv); customer-level files git-ignored
+├── tests/                    unit, SQL-contract, leakage, split-design, regression, AppTest page tests
+├── docs/                     memo, dictionary, data model, architecture, figures, app screenshots
+├── artifacts/                aggregated metrics (json/csv); household-level files git-ignored
 └── app/                      multipage Streamlit app, app/data/ (compact artifacts), app/requirements.txt
 ```
-MIT licensed. Dataset: Chen, D. (2012), UCI ML Repository, CC BY 4.0.
+MIT licensed. Data: 84.51 Complete Journey 2.0 via the `completejourney` R package (CC0 1.0).

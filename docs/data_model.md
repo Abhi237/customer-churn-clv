@@ -2,71 +2,88 @@
 
 ```mermaid
 erDiagram
-    stg_transactions ||--o| fct_lines : "cleaned & deduplicated"
-    fct_lines }o--|| fct_invoices : "line_type = sale, grouped by invoice"
-    fct_lines }o--|| fct_returns : "line_type = cancellation"
-    dim_customers ||--o{ fct_invoices : "customer_id"
-    dim_customers ||--o{ fct_returns : "customer_id"
-    dim_customers ||--o{ cohort_retention : "acquisition_cohort"
-    dim_customers ||--|| customer_rfm : "customer_id"
-    dim_customers ||--o| survival_customers : "customer_id"
-    dim_customers ||--o{ customer_daily_rolling : "customer_id"
-    dim_customers ||--o{ model_snapshot : "customer_id x cutoff"
+    stg_transactions ||--o{ fct_lines : "cleaned (empty, zero-price lines dropped)"
+    stg_products ||--o{ fct_lines : "product_id -> department"
+    fct_lines }o--|| fct_baskets : "grouped by household x basket"
+    fct_baskets }o--|| fct_days : "grouped by household x day"
+    dim_households ||--o{ fct_baskets : "household_id"
+    dim_households ||--o{ fct_days : "household_id"
+    dim_households ||--o{ cohort_retention : "entry_cohort"
+    dim_households ||--|| household_rfm : "household_id"
+    dim_households ||--o| survival_households : "household_id"
+    dim_households ||--o{ campaign_exposure : "household_id"
+    dim_households ||--o{ coupon_redemptions_clean : "household_id"
+    dim_households ||--o{ model_snapshot : "household_id x cutoff"
+    stg_demographics |o--o| dim_households : "801 of 2,469 (partial)"
+    dim_campaigns ||--o{ campaign_exposure : "campaign_id"
 
     stg_transactions {
         bigint raw_line_id PK
-        varchar invoice
-        varchar stock_code
-        int quantity
-        timestamp invoice_ts
-        double unit_price
-        varchar customer_id
-        varchar country
+        varchar household_id
+        varchar basket_id
+        varchar product_id
+        bigint quantity
+        decimal sales_value
+        decimal retail_disc
+        decimal coupon_disc
+        timestamp txn_ts
     }
-    fct_invoices {
-        varchar customer_id PK
-        varchar invoice PK
-        date invoice_date
-        int n_products
-        double revenue
+    fct_baskets {
+        varchar household_id PK
+        varchar basket_id PK
+        varchar store_id
+        date basket_date
+        bigint n_lines
+        decimal spend
+        decimal fresh_spend
+        boolean has_coupon
     }
-    fct_returns {
-        varchar invoice PK
-        varchar customer_id
-        date invoice_date
-        double returned_amount
+    fct_days {
+        varchar household_id PK
+        date visit_date PK
+        decimal spend
     }
-    dim_customers {
-        varchar customer_id PK
+    dim_households {
+        varchar household_id PK
         date first_purchase_date
-        date last_purchase_date
-        varchar home_country
-        date acquisition_cohort
-        double lifetime_revenue
+        date entry_cohort
+        decimal lifetime_spend
+        boolean has_demographics
     }
-    cohort_retention {
-        date acquisition_cohort PK
-        int months_since_acquisition PK
-        double retention_rate
-    }
-    customer_rfm {
-        varchar customer_id PK
+    household_rfm {
+        varchar household_id PK
         int r_score
         int f_score
         int m_score
         varchar rfm_segment
     }
-    survival_customers {
-        varchar customer_id PK
+    campaign_exposure {
+        varchar household_id PK
+        varchar campaign_id PK
+        varchar campaign_type
+        date start_date
+    }
+    dim_campaigns {
+        varchar campaign_id PK
+        varchar campaign_type
+        bigint n_households_targeted
+        bigint n_redemptions
+    }
+    survival_households {
+        varchar household_id PK
         int event
-        int duration_days
-        double first_order_value
+        bigint duration_days
+        bigint baseline_trips
     }
     model_snapshot {
-        varchar customer_id PK
+        varchar household_id PK
         date cutoff PK
-        double recency_days
-        double frequency
+        double trips_per_week
+        double share_fresh
         int churned
     }
 ```
+
+`model_snapshot` is produced in Python (`features.build_snapshot`) from `fct_baskets`, `fct_days`,
+`campaign_exposure` and `coupon_redemptions_clean`, one cutoff at a time. `fct_returns` exists but is empty
+because the extract has no negative quantities or sales values.
