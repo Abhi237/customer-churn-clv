@@ -27,9 +27,14 @@ survival tables and the 2,314 scored households with features, probabilities, CL
 SHAP values). No raw transactions, pipeline or ML libraries are needed at deploy time. The hosted app is
 deployed from `main`; it shows this grocery version once this branch is merged.
 
+**Audience.** The app is written for a **retention marketing manager** deciding where next quarter's retention budget
+goes. The Executive summary opens with headline KPIs (households scored, churn-proxy rate, CLV at risk, expected
+net value at the ASSUMED defaults) and numbered recommendations, each with a one-line reason and a link to the page
+that supports it. Every page starts with the question it answers and a one-line "so what".
+
 | Page | What it shows |
 |---|---|
-| Executive summary | business question, KPI cards, value x risk matrix, recommendation |
+| Executive summary | business question, headline KPI cards, numbered recommendations with links, value x risk matrix |
 | Data and cleaning | pipeline graph, cleaning waterfall, data-quality checks |
 | Cohorts and shopping behavior | retention heatmap, rolling activity, department mix, RFM |
 | Churn model | metrics vs baselines with CIs, ROC/PR, calibration, lift, backtest, SHAP and household lookup |

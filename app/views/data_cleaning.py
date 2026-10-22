@@ -1,12 +1,14 @@
 import plotly.graph_objects as go
 import streamlit as st
-from core import DATA_SOURCE, NAVY, RED, csv, setup_page, summary, usd
+from core import DATA_SOURCE, NAVY, RED, csv, page_story, setup_page, summary, usd
 
 s = summary()
 sq = s["sql_summary"]
 dqr = sq["dq_report"]
 setup_page("Data and cleaning", "Complete Journey 2.0 (84.51, CC0) via the `completejourney` R package v1.1.1 | "
            "2,469 loyalty-card households, calendar year 2017 | DuckDB SQL model")
+page_story('Can the numbers in this app be trusted?',
+           'Every cleaning step is counted, so any figure elsewhere can be traced back to the raw transaction lines.')
 
 c = st.columns(4)
 c[0].metric("Raw transaction lines", f"{dqr['total_lines']:,}")

@@ -21,6 +21,7 @@ TITLE_PREFIX = "Grocery Household Churn & CLV"
 TITLE_METHOD = ("Using calibrated gradient boosting and BG/NBD models to forecast household churn and lifetime value "
                 "on a US grocery loyalty panel")
 QUESTION = "Which households deserve retention spend, and what are they worth?"
+PERSONA = "retention marketing manager"
 TITLE = f"{TITLE_PREFIX} - {TITLE_METHOD}"
 
 NAVY, RED, GREEN, PURPLE, ORANGE, TEAL, GREY = ("#1f4e79", "#c0504d", "#5b9a3c", "#8064a2", "#e8892b",
@@ -69,6 +70,12 @@ def setup_page(title: str, subtitle: str | None = None, tagline: str | None = No
         st.markdown(f"<h2 class='headline-question'>{question}</h2>", unsafe_allow_html=True)
     if subtitle:
         st.markdown(f"<p class='small'>{subtitle}</p>", unsafe_allow_html=True)
+
+
+def page_story(question: str, so_what: str) -> None:
+    """One-line framing for an analyst: the question this page answers and why it matters."""
+    st.markdown(f"<div class='callout'><b>Question this page answers.</b> {question}<br>"
+                f"<b>So what.</b> {so_what}</div>", unsafe_allow_html=True)
 
 
 def assumed_banner(text: str) -> None:

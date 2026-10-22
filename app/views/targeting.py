@@ -2,13 +2,15 @@ import numpy as np
 import pandas as pd
 import plotly.express as px
 import streamlit as st
-from core import RISK_ORDER, VALUE_ORDER, assumed_banner, households, setup_page, summary, usd
+from core import RISK_ORDER, VALUE_ORDER, assumed_banner, households, page_story, setup_page, summary, usd
 
 s = summary()
 t = s["config"]["targeting"]
 ts = s["targeting_summary"]
 setup_page("Retention targeting simulator", "Combine predicted churn risk with predicted 12-month CLV and test "
            "how the economics change under different ASSUMED inputs")
+page_story('Who should we contact, and does it pay back under our assumptions?',
+           'This turns risk and value into a target list; the payback depends on ASSUMED inputs you can move here.')
 assumed_banner("There is no retention experiment in this dataset. Uplift, contact cost and margin below are "
                "<b>assumptions</b>; outputs are expected values under those assumptions, never observed impact. "
                "Churn probabilities are approximate (see Churn model, Calibration).")

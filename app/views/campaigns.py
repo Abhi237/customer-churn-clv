@@ -1,13 +1,15 @@
 import plotly.express as px
 import plotly.graph_objects as go
 import streamlit as st
-from core import NAVY, RED, TEAL, callout, csv, setup_page, summary
+from core import NAVY, RED, TEAL, callout, csv, page_story, setup_page, summary
 
 s = summary()
 cs = s["campaign_summary"]
 sq = s["sql_summary"]
 setup_page("Coupons and campaigns", "Campaign exposure, coupon redemption and a targeting analysis | observational "
            "association only, no causal claims")
+page_story('Do households that receive coupons churn less?',
+           'The gap is an association, not an effect; a holdout test is needed before coupon spend is scaled.')
 callout("<b>Read this first.</b> The data lists which households each campaign was sent to and which coupons were "
         "redeemed. It does not say how households were chosen and there is no holdout group, so nothing below "
         "estimates the effect of a campaign. Targeted households are very different from untargeted ones before "

@@ -2,13 +2,15 @@ import numpy as np
 import plotly.express as px
 import plotly.graph_objects as go
 import streamlit as st
-from core import NAVY, RED, callout, csv, households, setup_page, summary, usd
+from core import NAVY, RED, callout, csv, households, page_story, setup_page, summary, usd
 
 s = summary()
 cl = s["clv_summary"]
 sh = cl["short_holdout_13w"]
 setup_page("Household lifetime value", "BG/NBD (shopping-day frequency) + Gamma-Gamma (spend per shopping day) via `lifetimes` | "
            f"calibration to {s['config']['clv']['calibration_end']}, {cl['holdout_days']:.0f}-day holdout")
+page_story('How much is each household likely to spend over the next 12 months?',
+           'Value tells you how much a saved household is worth, which caps what a retention offer should cost.')
 
 c = st.columns(4)
 c[0].metric("Holdout shopping days: predicted", f"{cl['pred_purchases_total']:,.0f}",

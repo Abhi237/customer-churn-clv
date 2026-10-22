@@ -1,11 +1,13 @@
 import plotly.express as px
 import streamlit as st
-from core import NAVY, TEAL, callout, csv, setup_page, summary
+from core import NAVY, TEAL, callout, csv, page_story, setup_page, summary
 
 s = summary()
 ds = s["demographics_summary"]
 setup_page("Demographics breakout (partial coverage)", "Only 801 of 2,469 households have demographics | descriptive "
            "only, demographics are never model features")
+page_story('Do churn risk and value differ by household type?',
+           'Coverage is partial, so use this for context only, never to pick who gets an offer.')
 callout(f"<b>Partial coverage.</b> {ds['n_with_demographics']:,} of {ds['n_households']:,} households "
         f"({ds['coverage_share']:.0%}) have demographic attributes. They are not a random sample: as the comparison below "
         f"shows they are much heavier shoppers, and only {ds['n_churned_with_demographics']} of "

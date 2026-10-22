@@ -2,12 +2,14 @@ import pandas as pd
 import plotly.express as px
 import plotly.graph_objects as go
 import streamlit as st
-from core import NAVY, TEAL, csv, setup_page, summary
+from core import NAVY, TEAL, csv, page_story, setup_page, summary
 
 s = summary()
 sq = s["sql_summary"]
 setup_page("Cohorts and shopping behavior", "Entry cohorts, rolling activity, spend mix and RFM segments | "
            "the panel starts on 2017-01-01, so cohorts are entry cohorts, not acquisition cohorts")
+page_story('How quickly do households drop off after they first appear, and what do they buy?',
+           'Early drop-off shows when a retention touch is most likely to matter.')
 
 coh = csv("cohort_retention.csv")
 coh["cohort"] = pd.to_datetime(coh["entry_cohort"]).dt.strftime("%Y-%m")

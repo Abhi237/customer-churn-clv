@@ -3,7 +3,20 @@ import pandas as pd
 import plotly.express as px
 import plotly.graph_objects as go
 import streamlit as st
-from core import FEATURE_LABELS, GREEN, NAVY, RED, callout, csv, households, setup_page, shap_values, summary, usd
+from core import (
+    FEATURE_LABELS,
+    GREEN,
+    NAVY,
+    RED,
+    callout,
+    csv,
+    households,
+    page_story,
+    setup_page,
+    shap_values,
+    summary,
+    usd,
+)
 
 s = summary()
 tr = s["train_summary"]
@@ -11,6 +24,8 @@ ch = s["config"]["churn"]
 setup_page("Churn-proxy model", "Churn = no purchase in the 90 days after the cutoff (a behavioral proxy, not an "
            f"observed cancellation) | train {len(ch['train_cutoffs'])} cutoffs, validate {ch['valid_cutoff']}, "
            f"test {ch['test_cutoff']}")
+page_story('How well can we tell, in advance, which households will go quiet?',
+           'If the ranking beats the simple baselines, retention spend can be pointed at the riskiest households instead of everyone.')
 
 c = st.columns(4)
 c[0].metric("Training snapshots", f"{tr['n_train_rows']:,}", f"{len(ch['train_cutoffs'])} cutoffs, {tr['n_train_positives']} positives",

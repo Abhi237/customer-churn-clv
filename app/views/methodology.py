@@ -1,5 +1,5 @@
 import streamlit as st
-from core import DATA_SOURCE, MEMO_URL, REPO_URL, callout, setup_page, summary
+from core import DATA_SOURCE, MEMO_URL, REPO_URL, callout, page_story, setup_page, summary
 
 s = summary()
 ch = s["config"]["churn"]
@@ -8,6 +8,8 @@ sq = s["sql_summary"]
 cl = s["clv_summary"]
 tg = s["config"]["targeting"]
 setup_page("Methodology and limitations", "How the numbers were produced, and what they can and cannot support")
+page_story('How were the numbers produced, and where do they stop being reliable?',
+           'Read this before quoting any figure: it lists the proxies, assumptions and limits behind each page.')
 
 c1, c2 = st.columns(2)
 with c1:

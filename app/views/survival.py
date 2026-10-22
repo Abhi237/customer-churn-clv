@@ -1,12 +1,14 @@
 import numpy as np
 import plotly.graph_objects as go
 import streamlit as st
-from core import COLORWAY, NAVY, RED, callout, csv, setup_page, summary
+from core import COLORWAY, NAVY, RED, callout, csv, page_story, setup_page, summary
 
 s = summary()
 ex = s["sql_summary"]["survival_exclusions"]
 setup_page("Survival analysis (R)", "Time to first 90-day lapse | landmark design | Kaplan-Meier, log-rank, Cox PH "
            "with cox.zph | computed in R (survival, survminer) and rendered in Quarto")
+page_story('How long do households stay active, and which traits shorten that time?',
+           'An independent R check on the churn model: if the same traits drive lapse here, the story holds.')
 
 km = csv("surv_km_curves.csv")
 ov = csv("surv_km_overall.csv").set_index("time")
